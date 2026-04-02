@@ -315,7 +315,6 @@ export class DevPalette {
     }
 
     parameter.current = value
-    parameter.default = value
   }
 
   /**

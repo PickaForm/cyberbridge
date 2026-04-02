@@ -54,8 +54,7 @@ export class DevTuningManager {
    * @returns {void}
    */
   saveAndRestart(nextProfile) {
-    const normalizedProfile = this._normalizeProfile(nextProfile)
-    this.profile = this._copyCurrentValuesToDefaults(normalizedProfile)
+    this.profile = this._normalizeProfile(nextProfile)
     this._saveProfile()
     window.location.reload()
   }
@@ -83,7 +82,10 @@ export class DevTuningManager {
       return defaultProfile
     }
 
-    return this._normalizeProfile(storedProfile)
+    const normalizedProfile = this._normalizeProfile(storedProfile)
+    const alignedProfile = this._alignDefaultValuesWithCurrent(normalizedProfile)
+    this._saveProfileData(alignedProfile)
+    return alignedProfile
   }
 
   /**
@@ -126,15 +128,53 @@ export class DevTuningManager {
    * @ignore
    */
   _saveProfile() {
+    this._saveProfileData(this.profile)
+  }
+
+  /**
+   * Persist provided profile to local storage.
+   * @param {object} profile
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _saveProfileData(profile) {
     if (!this.storage) {
       return
     }
 
     try {
-      this.storage.setItem(DEV_TUNING_STORAGE_KEY, JSON.stringify(this.profile))
+      this.storage.setItem(DEV_TUNING_STORAGE_KEY, JSON.stringify(profile))
     } catch (error) {
       console.warn("Failed to persist dev tuning profile", error)
     }
+  }
+
+  /**
+   * Align default reference values with current local profile values.
+   * @param {object} profile
+   * @returns {object}
+   * @private
+   * @ignore
+   */
+  _alignDefaultValuesWithCurrent(profile) {
+    const profileClone = _cloneValue(profile)
+
+    for (const section of Object.values(profileClone)) {
+      if (!section || typeof section !== "object") {
+        continue
+      }
+
+      for (const parameter of Object.values(section)) {
+        if (!parameter || typeof parameter !== "object" || !("current" in parameter)) {
+          continue
+        }
+
+        parameter.default = parameter.current
+      }
+    }
+
+    return profileClone
   }
 
   /**
@@ -154,7 +194,7 @@ export class DevTuningManager {
 
       for (const [paramKey, defaultsParam] of Object.entries(defaultsSection)) {
         const sourceParam = sourceSection[paramKey] ?? {}
-        const defaultValue = sourceParam.default ?? defaultsParam.default
+        const defaultValue = defaultsParam.default
         const currentValue = sourceParam.current ?? sourceParam.default ?? defaultsParam.current ?? defaultsParam.default
         const sanitizedDefault = this._sanitizeValue(defaultValue, defaultsParam)
         const sanitizedCurrent = this._sanitizeValue(currentValue, { ...defaultsParam, default: sanitizedDefault })
@@ -188,33 +228,6 @@ export class DevTuningManager {
     }
 
     return currentValues
-  }
-
-  /**
-   * Copy each current value into the associated default field.
-   * @param {object} profile
-   * @returns {object}
-   * @private
-   * @ignore
-   */
-  _copyCurrentValuesToDefaults(profile) {
-    const profileClone = _cloneValue(profile)
-
-    for (const section of Object.values(profileClone)) {
-      if (!section || typeof section !== "object") {
-        continue
-      }
-
-      for (const parameter of Object.values(section)) {
-        if (!parameter || typeof parameter !== "object" || !("current" in parameter)) {
-          continue
-        }
-
-        parameter.default = parameter.current
-      }
-    }
-
-    return profileClone
   }
 
   /**
