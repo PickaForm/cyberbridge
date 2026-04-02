@@ -296,7 +296,7 @@
       "label": "Speed",
       "type": "number",
       "min": 0.5,
-      "max": 200,
+      "max": 60,
       "step": 0.1,
       "default": 13,
       "current": 13

@@ -430,6 +430,7 @@ if (hudElement && hudCloseButton) {
 }
 
 const tuningManager = new DevTuningManager()
+await tuningManager.hydrateFromSharedProfile()
 tuningManager.applyRuntime()
 
 const gameInstance = new CyberlovePoc(appElement, tuningManager)

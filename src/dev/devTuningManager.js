@@ -10,6 +10,7 @@ import { gameConfig } from "../config/gameConfig.js"
 import { setRuntimeTuningValues } from "../config/tuningRuntime.js"
 
 const DEV_TUNING_STORAGE_KEY = "cyberlove-dev-tuning-v1"
+const DEV_TUNING_SHARED_PROFILE_PATH = "devTuningProfile.json"
 
 export class DevTuningManager {
   /**
@@ -54,8 +55,10 @@ export class DevTuningManager {
    * @returns {void}
    */
   saveAndRestart(nextProfile) {
-    this.profile = this._normalizeProfile(nextProfile)
+    const normalizedProfile = this._normalizeProfile(nextProfile)
+    this.profile = this._alignDefaultValuesWithCurrent(normalizedProfile)
     this._saveProfile()
+    this._downloadProfileSnapshot(this.profile)
     window.location.reload()
   }
 
@@ -67,6 +70,24 @@ export class DevTuningManager {
     this.profile = this._buildDefaultProfile()
     this._saveProfile()
     window.location.reload()
+  }
+
+  /**
+   * Hydrate runtime profile from shared JSON file when local storage has no profile.
+   * @returns {Promise<void>}
+   */
+  async hydrateFromSharedProfile() {
+    const storedProfile = this._readStoredProfile()
+    if (storedProfile) {
+      return
+    }
+
+    const sharedProfile = await this._readSharedProfile()
+    if (!sharedProfile) {
+      return
+    }
+
+    this.profile = this._normalizeProfile(sharedProfile)
   }
 
   /**
@@ -117,6 +138,32 @@ export class DevTuningManager {
       return JSON.parse(rawValue)
     } catch (error) {
       console.warn("Failed to read dev tuning profile from storage", error)
+      return null
+    }
+  }
+
+  /**
+   * Read shared profile from deployed public JSON file.
+   * @returns {Promise<object | null>}
+   * @private
+   * @ignore
+   */
+  async _readSharedProfile() {
+    if (typeof window === "undefined" || typeof window.fetch !== "function") {
+      return null
+    }
+
+    try {
+      const basePath = import.meta.env.BASE_URL ?? "/"
+      const profileUrl = new URL(DEV_TUNING_SHARED_PROFILE_PATH, window.location.origin + basePath)
+      const response = await window.fetch(profileUrl.toString(), { cache: "no-store" })
+      if (!response.ok) {
+        return null
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.warn("Failed to read shared dev tuning profile", error)
       return null
     }
   }
@@ -175,6 +222,35 @@ export class DevTuningManager {
     }
 
     return profileClone
+  }
+
+  /**
+   * Download a profile snapshot ready to publish as shared defaults file.
+   * @param {object} profile
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _downloadProfileSnapshot(profile) {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return
+    }
+
+    try {
+      const profileJson = JSON.stringify(profile, null, 2)
+      const blob = new Blob([profileJson], { type: "application/json;charset=utf-8" })
+      const downloadUrl = URL.createObjectURL(blob)
+      const anchorElement = document.createElement("a")
+      anchorElement.href = downloadUrl
+      anchorElement.download = DEV_TUNING_SHARED_PROFILE_PATH
+      anchorElement.style.display = "none"
+      document.body.appendChild(anchorElement)
+      anchorElement.click()
+      document.body.removeChild(anchorElement)
+      URL.revokeObjectURL(downloadUrl)
+    } catch (error) {
+      console.warn("Failed to download shared dev tuning profile snapshot", error)
+    }
   }
 
   /**
