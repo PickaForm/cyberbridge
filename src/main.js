@@ -136,7 +136,7 @@ class CyberlovePoc {
   _recreateCrowdSystem() {
     this.crowd.dispose()
     this.crowd = new CrowdSystem(this.rendererApp.scene)
-    this.crowd.update(0, this.player.mesh.position)
+    this.crowd.update(0, this.player.mesh.position, this.player.forwardVector.z)
   }
 
   /**
@@ -333,7 +333,7 @@ class CyberlovePoc {
 
     this.player.update(deltaTime)
     this.proceduralCity.update(this.player.mesh.position.z)
-    this.crowd.update(deltaTime, this.player.mesh.position)
+    this.crowd.update(deltaTime, this.player.mesh.position, this.player.forwardVector.z)
     this.flyingCars.update(deltaTime, this.player.mesh.position)
     this.cameraRig.update(deltaTime)
     this.rendererApp.render()

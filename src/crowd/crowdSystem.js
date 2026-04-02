@@ -32,6 +32,9 @@ export class CrowdSystem {
     this.faceDetailDistanceFar = 86
     this.nearSimulationDistance = 52
     this.midSimulationDistance = 118
+    this.isProximityMoodTriggerEnabled = false
+    this.faceToFaceBoxHalfWidth = this.laneWidth * 0.6
+    this.faceToFaceBoxHalfDepth = 3.4
 
     this._spawnInitialAgents()
   }
@@ -40,16 +43,17 @@ export class CrowdSystem {
    * Update crowd movement and local avoidance.
    * @param {number} deltaTime
    * @param {THREE.Vector3} playerPosition
+   * @param {number} playerFacingZ
    * @returns {void}
    */
-  update(deltaTime, playerPosition) {
+  update(deltaTime, playerPosition, playerFacingZ = 0) {
     const cappedDeltaTime = Math.min(deltaTime, 0.1)
     const playerVelocityZ = this._computePlayerVelocityZ(playerPosition.z, cappedDeltaTime)
     this.simulationAccumulator += cappedDeltaTime
     let simulationStepCount = 0
 
     while (this.simulationAccumulator >= this.simulationStep && simulationStepCount < this.maxSimulationStepsPerFrame) {
-      this._simulateStep(this.simulationStep, playerPosition, playerVelocityZ)
+      this._simulateStep(this.simulationStep, playerPosition, playerVelocityZ, playerFacingZ)
       this.simulationAccumulator -= this.simulationStep
       simulationStepCount += 1
     }
@@ -157,6 +161,7 @@ export class CrowdSystem {
       id,
       instanceIndex,
       isInteractionStopped: false,
+      baseMood: faceProfile.mood,
       laneIndex,
       laneChangeCooldown: Math.random() * 0.3,
       direction,
@@ -190,11 +195,12 @@ export class CrowdSystem {
    * @param {number} simulationDelta
    * @param {THREE.Vector3} playerPosition
    * @param {number} playerVelocityZ
+   * @param {number} playerFacingZ
    * @returns {void}
    * @private
    * @ignore
    */
-  _simulateStep(simulationDelta, playerPosition, playerVelocityZ) {
+  _simulateStep(simulationDelta, playerPosition, playerVelocityZ, playerFacingZ) {
     this.simulationTime += simulationDelta
     this._rebuildLaneMap()
 
@@ -209,7 +215,7 @@ export class CrowdSystem {
         continue
       }
 
-      this._updateAgent(agent, lodSimulationDelta, playerPosition, playerVelocityZ)
+      this._updateAgent(agent, lodSimulationDelta, playerPosition, playerVelocityZ, playerFacingZ)
       this._recycleIfOutOfRange(agent, playerPosition.z)
     }
   }
@@ -258,11 +264,16 @@ export class CrowdSystem {
    * @param {number} simulationDelta
    * @param {THREE.Vector3} playerPosition
    * @param {number} playerVelocityZ
+   * @param {number} playerFacingZ
    * @returns {void}
    * @private
    * @ignore
    */
-  _updateAgent(agent, simulationDelta, playerPosition, playerVelocityZ) {
+  _updateAgent(agent, simulationDelta, playerPosition, playerVelocityZ, playerFacingZ) {
+    if (this.isProximityMoodTriggerEnabled) {
+      this._updateAgentMoodFromPlayerProximity(agent, playerPosition, playerVelocityZ, playerFacingZ)
+    }
+
     if (agent.isInteractionStopped) {
       agent.currentSpeed = 0
       return
@@ -660,6 +671,7 @@ export class CrowdSystem {
     agent.speedVariationFrequency = speedProfile.speedVariationFrequency
     agent.speedVariationPhase = speedProfile.speedVariationPhase
     const faceProfile = this._createFaceProfile()
+    agent.baseMood = faceProfile.mood
     agent.mood = faceProfile.mood
     agent.eyeShape = faceProfile.eyeShape
     agent.eyeScale = faceProfile.eyeScale
@@ -679,6 +691,89 @@ export class CrowdSystem {
     agent.previousZ = agent.z
     this._syncAgentBodyColor(agent)
     this._syncAgentAppearance(agent)
+  }
+
+  /**
+   * Toggle one NPC mood to happy when crossing the player face-to-face.
+   * @param {object} agent
+   * @param {THREE.Vector3} playerPosition
+   * @param {number} playerVelocityZ
+   * @param {number} playerFacingZ
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _updateAgentMoodFromPlayerProximity(agent, playerPosition, playerVelocityZ, playerFacingZ) {
+    const shouldUseHappyMood = this._isFaceToFaceWithPlayer(agent, playerPosition, playerVelocityZ, playerFacingZ)
+    const targetMood = shouldUseHappyMood ? "happy" : agent.baseMood
+    this._setAgentMood(agent, targetMood)
+  }
+
+  /**
+   * Check if one NPC is close enough and in opposite direction to player.
+   * @param {object} agent
+   * @param {THREE.Vector3} playerPosition
+   * @param {number} playerVelocityZ
+   * @param {number} playerFacingZ
+   * @returns {boolean}
+   * @private
+   * @ignore
+   */
+  _isFaceToFaceWithPlayer(agent, playerPosition, playerVelocityZ, playerFacingZ) {
+    let playerDirection = Math.sign(playerFacingZ)
+    if (playerDirection === 0) {
+      playerDirection = Math.sign(playerVelocityZ)
+    }
+    if (playerDirection === 0 || playerDirection === agent.direction) {
+      return false
+    }
+
+    const deltaX = Math.abs(agent.x - playerPosition.x)
+    const deltaZ = Math.abs(agent.z - playerPosition.z)
+    if (deltaX > this.faceToFaceBoxHalfWidth || deltaZ > this.faceToFaceBoxHalfDepth) {
+      return false
+    }
+
+    return true
+  }
+
+  /**
+   * Apply one mood while keeping mouth placement stable.
+   * @param {object} agent
+   * @param {string} targetMood
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _setAgentMood(agent, targetMood) {
+    if (agent.mood === targetMood) {
+      return
+    }
+
+    const previousMoodYOffset = this._getMouthMoodYOffset(agent.mood)
+    const nextMoodYOffset = this._getMouthMoodYOffset(targetMood)
+    agent.mouthYOffset += previousMoodYOffset - nextMoodYOffset
+    agent.mood = targetMood
+    this._syncAgentAppearance(agent)
+  }
+
+  /**
+   * Get renderer vertical mouth offset used by one mood.
+   * @param {string} mood
+   * @returns {number}
+   * @private
+   * @ignore
+   */
+  _getMouthMoodYOffset(mood) {
+    if (mood === "sad") {
+      return 0.035
+    }
+
+    if (mood === "neutral" || mood === "perplexed") {
+      return 0.01
+    }
+
+    return 0
   }
 
   /**

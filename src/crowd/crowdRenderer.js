@@ -503,12 +503,12 @@ export class CrowdRenderer {
   _writeMouth(mood, instanceIndex, x, y, z, mouthScale, mouthArcDepth, mouthTilt) {
     const arcDepth = THREE.MathUtils.clamp(mouthArcDepth, 0.45, 1.7)
     if (mood === "happy") {
-      this._writeFaceInstance(this.mouthHappyMesh, instanceIndex, x, y, z, mouthScale, 0, mouthScale, mouthScale * arcDepth, mouthScale)
+      this._writeFaceInstance(this.mouthHappyMesh, instanceIndex, x, y, z, mouthScale, Math.PI, mouthScale, mouthScale * arcDepth, mouthScale)
       return
     }
 
     if (mood === "sad") {
-      this._writeFaceInstance(this.mouthSadMesh, instanceIndex, x, y + 0.035, z, mouthScale, Math.PI, mouthScale, mouthScale * arcDepth, mouthScale)
+      this._writeFaceInstance(this.mouthSadMesh, instanceIndex, x, y + 0.035, z, mouthScale, 0, mouthScale, mouthScale * arcDepth, mouthScale)
       return
     }
 
