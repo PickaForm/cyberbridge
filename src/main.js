@@ -16,6 +16,8 @@ import { FlyingCarsSystem } from "./flyingCars/flyingCarsSystem.js"
 import { DevTuningManager } from "./dev/devTuningManager.js"
 import { DevPalette } from "./dev/devPalette.js"
 
+const DEV_MODE_STORAGE_KEY = "cyberlove-dev-mode-v1"
+
 /**
  * Game orchestrator.
  */
@@ -340,6 +342,80 @@ class CyberlovePoc {
   }
 }
 
+/**
+ * Resolve persisted dev mode from URL query and local storage.
+ *
+ * Usage:
+ * const isDevModeEnabled = _resolveDevMode()
+ * // URL ?dev=true|false has priority and persists to localStorage
+ * @returns {boolean}
+ * @private
+ * @ignore
+ */
+function _resolveDevMode() {
+  const devQueryValue = _readDevQueryValue()
+  if (devQueryValue !== null) {
+    _persistDevMode(devQueryValue)
+    return devQueryValue
+  }
+
+  return _readPersistedDevMode()
+}
+
+/**
+ * Read and normalize ?dev query value.
+ * @returns {boolean | null}
+ * @private
+ * @ignore
+ */
+function _readDevQueryValue() {
+  const searchParams = new URLSearchParams(window.location.search)
+  const rawValue = searchParams.get("dev")
+  if (!rawValue) {
+    return null
+  }
+
+  const normalizedValue = rawValue.trim().toLowerCase()
+  if (normalizedValue === "true") {
+    return true
+  }
+  if (normalizedValue === "false") {
+    return false
+  }
+  return null
+}
+
+/**
+ * Read persisted dev mode from local storage.
+ * @returns {boolean}
+ * @private
+ * @ignore
+ */
+function _readPersistedDevMode() {
+  try {
+    const rawValue = window.localStorage.getItem(DEV_MODE_STORAGE_KEY)
+    return rawValue === "true"
+  } catch (error) {
+    console.warn("Failed to read dev mode from storage", error)
+    return false
+  }
+}
+
+/**
+ * Persist dev mode state in local storage.
+ * @param {boolean} isDevModeEnabled
+ * @returns {void}
+ * @private
+ * @ignore
+ */
+function _persistDevMode(isDevModeEnabled) {
+  try {
+    window.localStorage.setItem(DEV_MODE_STORAGE_KEY, String(isDevModeEnabled))
+  } catch (error) {
+    console.warn("Failed to persist dev mode in storage", error)
+  }
+}
+
 const appElement = document.getElementById("app")
 if (!appElement) {
   throw new Error("Missing #app element")
@@ -357,9 +433,13 @@ const tuningManager = new DevTuningManager()
 tuningManager.applyRuntime()
 
 const gameInstance = new CyberlovePoc(appElement, tuningManager)
-const devPalette = new DevPalette(tuningManager, (profile) => {
-  gameInstance.applyLiveTuning(profile)
-})
-gameInstance.setDevPalette(devPalette)
+const isDevModeEnabled = _resolveDevMode()
+if (isDevModeEnabled) {
+  const devPalette = new DevPalette(tuningManager, (profile) => {
+    gameInstance.applyLiveTuning(profile)
+  })
+  gameInstance.setDevPalette(devPalette)
+}
+
 window.cyberlovePoc = gameInstance
 window.cyberloveDevTuningManager = tuningManager
