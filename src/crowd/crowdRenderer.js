@@ -47,6 +47,9 @@ export class CrowdRenderer {
     this.agentFaces = new Array(maxAgents)
     this.faceVisibility = new Array(maxAgents).fill(true)
     this.instanceDummy = new THREE.Object3D()
+    this.localFaceOffset = new THREE.Vector3()
+    this.worldFacePosition = new THREE.Vector3()
+    this.faceRotationEuler = new THREE.Euler()
 
     this.scene.add(this.instanceMesh)
     this.scene.add(this.eyeSquareLeftMesh)
@@ -69,15 +72,18 @@ export class CrowdRenderer {
    * @param {number} z
    * @param {number} y
    * @param {boolean} faceVisible
+   * @param {number} rotationX
+   * @param {number} rotationY
+   * @param {number} rotationZ
    * @returns {void}
    */
-  setAgentMatrix(instanceIndex, x, z, y, faceVisible = true) {
+  setAgentMatrix(instanceIndex, x, z, y, faceVisible = true, rotationX = 0, rotationY = 0, rotationZ = 0) {
     this.instanceDummy.position.set(x, y, z)
-    this.instanceDummy.rotation.set(0, 0, 0)
+    this.instanceDummy.rotation.set(rotationX, rotationY, rotationZ)
     this.instanceDummy.scale.set(1, 1, 1)
     this.instanceDummy.updateMatrix()
     this.instanceMesh.setMatrixAt(instanceIndex, this.instanceDummy.matrix)
-    this._syncFaceMatrices(instanceIndex, x, y, z, faceVisible)
+    this._syncFaceMatrices(instanceIndex, x, y, z, faceVisible, rotationX, rotationY, rotationZ)
   }
 
   /**
@@ -356,11 +362,14 @@ export class CrowdRenderer {
    * @param {number} y
    * @param {number} z
    * @param {boolean} faceVisible
+   * @param {number} rotationX
+   * @param {number} rotationY
+   * @param {number} rotationZ
    * @returns {void}
    * @private
    * @ignore
    */
-  _syncFaceMatrices(instanceIndex, x, y, z, faceVisible) {
+  _syncFaceMatrices(instanceIndex, x, y, z, faceVisible, rotationX = 0, rotationY = 0, rotationZ = 0) {
     if (!faceVisible) {
       if (this.faceVisibility[instanceIndex]) {
         this._hideEyeInstances(instanceIndex)
@@ -396,14 +405,25 @@ export class CrowdRenderer {
     const mouthArcDepth = faceProfile.mouthArcDepth ?? 1
     const mouthTilt = faceProfile.mouthTilt ?? 0
     const forwardSign = faceProfile.facingDirection >= 0 ? 1 : -1
-    const eyeY = y + eyeYOffset
-    const faceZ = z + 0.6 * forwardSign
-    const leftEyeX = x - eyeSpacing
-    const rightEyeX = x + eyeSpacing
+    const faceDepth = 0.6 * forwardSign
 
-    this._writeEye(faceProfile.eyeShape, "left", instanceIndex, leftEyeX, eyeY, faceZ, eyeScale)
-    this._writeEye(faceProfile.eyeShape, "right", instanceIndex, rightEyeX, eyeY, faceZ, eyeScale)
-    this._writeMouth(faceProfile.mood, instanceIndex, x, y + mouthYOffset, faceZ, mouthScale, mouthArcDepth, mouthTilt)
+    this._writeEye(faceProfile.eyeShape, "left", instanceIndex, x, y, z, -eyeSpacing, eyeYOffset, faceDepth, eyeScale, rotationX, rotationY, rotationZ)
+    this._writeEye(faceProfile.eyeShape, "right", instanceIndex, x, y, z, eyeSpacing, eyeYOffset, faceDepth, eyeScale, rotationX, rotationY, rotationZ)
+    this._writeMouth(
+      faceProfile.mood,
+      instanceIndex,
+      x,
+      y,
+      z,
+      mouthYOffset,
+      faceDepth,
+      mouthScale,
+      mouthArcDepth,
+      mouthTilt,
+      rotationX,
+      rotationY,
+      rotationZ
+    )
   }
 
   /**
@@ -458,66 +478,206 @@ export class CrowdRenderer {
    * @param {string} eyeShape
    * @param {"left" | "right"} side
    * @param {number} instanceIndex
-   * @param {number} x
-   * @param {number} y
-   * @param {number} z
+   * @param {number} originX
+   * @param {number} originY
+   * @param {number} originZ
+   * @param {number} localX
+   * @param {number} localY
+   * @param {number} localZ
    * @param {number} eyeScale
+   * @param {number} rotationX
+   * @param {number} rotationY
+   * @param {number} rotationZ
    * @returns {void}
    * @private
    * @ignore
    */
-  _writeEye(eyeShape, side, instanceIndex, x, y, z, eyeScale) {
+  _writeEye(eyeShape, side, instanceIndex, originX, originY, originZ, localX, localY, localZ, eyeScale, rotationX, rotationY, rotationZ) {
+    const eyePosition = this._transformLocalPointToWorld(originX, originY, originZ, localX, localY, localZ, rotationX, rotationY, rotationZ)
     const shapeKey = eyeShape ?? "square"
     if (shapeKey === "rectangle") {
-      this._writeFaceInstance(side === "left" ? this.eyeRectangleLeftMesh : this.eyeRectangleRightMesh, instanceIndex, x, y, z, eyeScale, 0)
+      this._writeFaceInstance(
+        side === "left" ? this.eyeRectangleLeftMesh : this.eyeRectangleRightMesh,
+        instanceIndex,
+        eyePosition.x,
+        eyePosition.y,
+        eyePosition.z,
+        eyeScale,
+        0,
+        eyeScale,
+        eyeScale,
+        eyeScale,
+        rotationX,
+        rotationY,
+        rotationZ
+      )
       return
     }
 
     if (shapeKey === "round") {
-      this._writeFaceInstance(side === "left" ? this.eyeRoundLeftMesh : this.eyeRoundRightMesh, instanceIndex, x, y, z, eyeScale, 0)
+      this._writeFaceInstance(
+        side === "left" ? this.eyeRoundLeftMesh : this.eyeRoundRightMesh,
+        instanceIndex,
+        eyePosition.x,
+        eyePosition.y,
+        eyePosition.z,
+        eyeScale,
+        0,
+        eyeScale,
+        eyeScale,
+        eyeScale,
+        rotationX,
+        rotationY,
+        rotationZ
+      )
       return
     }
 
     if (shapeKey === "cross") {
-      this._writeFaceInstance(side === "left" ? this.eyeCrossLeftMesh : this.eyeCrossRightMesh, instanceIndex, x, y, z, eyeScale, Math.PI * 0.25)
+      this._writeFaceInstance(
+        side === "left" ? this.eyeCrossLeftMesh : this.eyeCrossRightMesh,
+        instanceIndex,
+        eyePosition.x,
+        eyePosition.y,
+        eyePosition.z,
+        eyeScale,
+        Math.PI * 0.25,
+        eyeScale,
+        eyeScale,
+        eyeScale,
+        rotationX,
+        rotationY,
+        rotationZ
+      )
       return
     }
 
-    this._writeFaceInstance(side === "left" ? this.eyeSquareLeftMesh : this.eyeSquareRightMesh, instanceIndex, x, y, z, eyeScale, 0)
+    this._writeFaceInstance(
+      side === "left" ? this.eyeSquareLeftMesh : this.eyeSquareRightMesh,
+      instanceIndex,
+      eyePosition.x,
+      eyePosition.y,
+      eyePosition.z,
+      eyeScale,
+      0,
+      eyeScale,
+      eyeScale,
+      eyeScale,
+      rotationX,
+      rotationY,
+      rotationZ
+    )
   }
 
   /**
    * Write mouth matrix based on mood.
    * @param {string} mood
    * @param {number} instanceIndex
-   * @param {number} x
-   * @param {number} y
-   * @param {number} z
+   * @param {number} originX
+   * @param {number} originY
+   * @param {number} originZ
+   * @param {number} localYOffset
+   * @param {number} localZ
    * @param {number} mouthScale
    * @param {number} mouthArcDepth
    * @param {number} mouthTilt
+   * @param {number} rotationX
+   * @param {number} rotationY
+   * @param {number} rotationZ
    * @returns {void}
    * @private
    * @ignore
    */
-  _writeMouth(mood, instanceIndex, x, y, z, mouthScale, mouthArcDepth, mouthTilt) {
+  _writeMouth(
+    mood,
+    instanceIndex,
+    originX,
+    originY,
+    originZ,
+    localYOffset,
+    localZ,
+    mouthScale,
+    mouthArcDepth,
+    mouthTilt,
+    rotationX,
+    rotationY,
+    rotationZ
+  ) {
     const arcDepth = THREE.MathUtils.clamp(mouthArcDepth, 0.45, 1.7)
+    const mouthYOffset = mood === "sad" ? localYOffset + 0.035 : mood === "perplexed" || mood === "neutral" ? localYOffset + 0.01 : localYOffset
+    const mouthPosition = this._transformLocalPointToWorld(originX, originY, originZ, 0, mouthYOffset, localZ, rotationX, rotationY, rotationZ)
     if (mood === "happy") {
-      this._writeFaceInstance(this.mouthHappyMesh, instanceIndex, x, y, z, mouthScale, Math.PI, mouthScale, mouthScale * arcDepth, mouthScale)
+      this._writeFaceInstance(
+        this.mouthHappyMesh,
+        instanceIndex,
+        mouthPosition.x,
+        mouthPosition.y,
+        mouthPosition.z,
+        mouthScale,
+        Math.PI,
+        mouthScale,
+        mouthScale * arcDepth,
+        mouthScale,
+        rotationX,
+        rotationY,
+        rotationZ
+      )
       return
     }
 
     if (mood === "sad") {
-      this._writeFaceInstance(this.mouthSadMesh, instanceIndex, x, y + 0.035, z, mouthScale, 0, mouthScale, mouthScale * arcDepth, mouthScale)
+      this._writeFaceInstance(
+        this.mouthSadMesh,
+        instanceIndex,
+        mouthPosition.x,
+        mouthPosition.y,
+        mouthPosition.z,
+        mouthScale,
+        0,
+        mouthScale,
+        mouthScale * arcDepth,
+        mouthScale,
+        rotationX,
+        rotationY,
+        rotationZ
+      )
       return
     }
 
     if (mood === "perplexed") {
-      this._writeFaceInstance(this.mouthNeutralMesh, instanceIndex, x, y + 0.01, z, mouthScale, mouthTilt)
+      this._writeFaceInstance(
+        this.mouthNeutralMesh,
+        instanceIndex,
+        mouthPosition.x,
+        mouthPosition.y,
+        mouthPosition.z,
+        mouthScale,
+        mouthTilt,
+        mouthScale,
+        mouthScale,
+        mouthScale,
+        rotationX,
+        rotationY,
+        rotationZ
+      )
       return
     }
 
-    this._writeFaceInstance(this.mouthNeutralMesh, instanceIndex, x, y + 0.01, z, mouthScale, 0)
+    this._writeFaceInstance(
+      this.mouthNeutralMesh,
+      instanceIndex,
+      mouthPosition.x,
+      mouthPosition.y,
+      mouthPosition.z,
+      mouthScale,
+      0,
+      mouthScale,
+      mouthScale,
+      mouthScale,
+      rotationX,
+      rotationY,
+      rotationZ
+    )
   }
 
   /**
@@ -532,15 +692,48 @@ export class CrowdRenderer {
    * @param {number} scaleX
    * @param {number} scaleY
    * @param {number} scaleZ
+   * @param {number} rotationX
+   * @param {number} rotationY
+   * @param {number} rotationZ
    * @returns {void}
    * @private
    * @ignore
    */
-  _writeFaceInstance(mesh, instanceIndex, x, y, z, scale, rotZ, scaleX = scale, scaleY = scale, scaleZ = scale) {
+  _writeFaceInstance(mesh, instanceIndex, x, y, z, scale, rotZ, scaleX = scale, scaleY = scale, scaleZ = scale, rotationX = 0, rotationY = 0, rotationZ = 0) {
     this.instanceDummy.position.set(x, y, z)
-    this.instanceDummy.rotation.set(0, 0, rotZ)
+    this.instanceDummy.rotation.set(rotationX, rotationY, rotationZ)
+    if (rotZ !== 0) {
+      this.instanceDummy.rotateZ(rotZ)
+    }
     this.instanceDummy.scale.set(scaleX, scaleY, scaleZ)
     this.instanceDummy.updateMatrix()
     mesh.setMatrixAt(instanceIndex, this.instanceDummy.matrix)
+  }
+
+  /**
+   * Transform one local face point to world space using body rotation.
+   * @param {number} originX
+   * @param {number} originY
+   * @param {number} originZ
+   * @param {number} localX
+   * @param {number} localY
+   * @param {number} localZ
+   * @param {number} rotationX
+   * @param {number} rotationY
+   * @param {number} rotationZ
+   * @returns {THREE.Vector3}
+   * @private
+   * @ignore
+   */
+  _transformLocalPointToWorld(originX, originY, originZ, localX, localY, localZ, rotationX, rotationY, rotationZ) {
+    this.localFaceOffset.set(localX, localY, localZ)
+    this.faceRotationEuler.set(rotationX, rotationY, rotationZ)
+    this.localFaceOffset.applyEuler(this.faceRotationEuler)
+    this.worldFacePosition.set(
+      originX + this.localFaceOffset.x,
+      originY + this.localFaceOffset.y,
+      originZ + this.localFaceOffset.z
+    )
+    return this.worldFacePosition
   }
 }

@@ -8,12 +8,16 @@
 import * as THREE from "three"
 import { gameConfig } from "../config/gameConfig.js"
 import { CrowdRenderer } from "./crowdRenderer.js"
+import { CrowdHitPhysics } from "../core/physics/crowdHitPhysics.js"
 
 export class CrowdSystem {
   /**
    * @param {THREE.Scene} scene
+   * @param {object} options
+   * @param {((payload: object) => void) | null} options.onNpcHit
    */
-  constructor(scene) {
+  constructor(scene, options = {}) {
+    const { onNpcHit = null } = options
     this.agents = []
     this.laneMap = new Map()
     this.nextAgentId = 1
@@ -35,6 +39,10 @@ export class CrowdSystem {
     this.isProximityMoodTriggerEnabled = false
     this.faceToFaceBoxHalfWidth = this.laneWidth * 0.6
     this.faceToFaceBoxHalfDepth = 3.4
+    this.walkwayTopY = 1.05
+    this.playerNpcCollisionRadius = 1.05
+    this.lastPlayerX = null
+    this.onNpcHit = typeof onNpcHit === "function" ? onNpcHit : null
 
     this._spawnInitialAgents()
   }
@@ -49,6 +57,8 @@ export class CrowdSystem {
   update(deltaTime, playerPosition, playerFacingZ = 0) {
     const cappedDeltaTime = Math.min(deltaTime, 0.1)
     const playerVelocityZ = this._computePlayerVelocityZ(playerPosition.z, cappedDeltaTime)
+    const playerStartX = this.lastPlayerX ?? playerPosition.x
+    const playerStartZ = this.lastPlayerZ ?? playerPosition.z
     this.simulationAccumulator += cappedDeltaTime
     let simulationStepCount = 0
 
@@ -62,9 +72,12 @@ export class CrowdSystem {
       this.simulationAccumulator = this.simulationStep
     }
 
+    this._resolvePlayerNpcHitCollisionsFromSweep(playerStartX, playerStartZ, playerPosition.x, playerPosition.z, playerVelocityZ, playerFacingZ)
+
     const interpolationAlpha = this.simulationAccumulator / this.simulationStep
     this._renderInterpolated(interpolationAlpha, playerPosition)
     this.crowdRenderer.commit()
+    this.lastPlayerX = playerPosition.x
     this.lastPlayerZ = playerPosition.z
   }
 
@@ -77,6 +90,7 @@ export class CrowdSystem {
     this.agents.length = 0
     this.laneMap.clear()
     this.stoppedAgentId = null
+    this.lastPlayerX = null
   }
 
   /**
@@ -94,7 +108,7 @@ export class CrowdSystem {
    */
   toggleNpcInteractionStopByInstanceIndex(instanceIndex) {
     const selectedAgent = this._getAgentByInstanceIndex(instanceIndex)
-    if (!selectedAgent) {
+    if (!selectedAgent || selectedAgent.isHitActive) {
       return
     }
 
@@ -133,7 +147,7 @@ export class CrowdSystem {
       this.agents.push(agent)
       this._syncAgentBodyColor(agent)
       this._syncAgentAppearance(agent)
-      this._syncAgentTransform(agent, agent.x, agent.z)
+      this._syncAgentTransform(agent, agent.x, agent.y, agent.z)
     }
 
     this.crowdRenderer.commit()
@@ -161,6 +175,8 @@ export class CrowdSystem {
       id,
       instanceIndex,
       isInteractionStopped: false,
+      isHitActive: false,
+      hitState: null,
       baseMood: faceProfile.mood,
       laneIndex,
       laneChangeCooldown: Math.random() * 0.3,
@@ -184,8 +200,17 @@ export class CrowdSystem {
       faceLodVisible: true,
       lodSimulationAccumulator: 0,
       z,
+      y: this.walkwayTopY,
       x,
+      rotationX: 0,
+      rotationY: 0,
+      rotationZ: 0,
+      previousRotationX: 0,
+      previousRotationY: 0,
+      previousRotationZ: 0,
+      hitSpinVelocityY: 0,
       previousX: x,
+      previousY: this.walkwayTopY,
       previousZ: z
     }
   }
@@ -206,10 +231,19 @@ export class CrowdSystem {
 
     for (const agent of this.agents) {
       agent.previousX = agent.x
+      agent.previousY = agent.y
       agent.previousZ = agent.z
+      agent.previousRotationX = agent.rotationX
+      agent.previousRotationY = agent.rotationY
+      agent.previousRotationZ = agent.rotationZ
     }
 
     for (const agent of this.agents) {
+      if (agent.isHitActive) {
+        this._updateHitAgent(agent, simulationDelta, playerPosition.z)
+        continue
+      }
+
       const lodSimulationDelta = this._consumeAgentSimulationDelta(agent, simulationDelta, playerPosition)
       if (lodSimulationDelta <= 0) {
         continue
@@ -218,11 +252,13 @@ export class CrowdSystem {
       this._updateAgent(agent, lodSimulationDelta, playerPosition, playerVelocityZ, playerFacingZ)
       this._recycleIfOutOfRange(agent, playerPosition.z)
     }
+
   }
 
   /**
    * Render an interpolated crowd frame.
    * @param {number} interpolationAlpha
+   * @param {THREE.Vector3} playerPosition
    * @returns {void}
    * @private
    * @ignore
@@ -231,8 +267,12 @@ export class CrowdSystem {
     const alpha = THREE.MathUtils.clamp(interpolationAlpha, 0, 1)
     for (const agent of this.agents) {
       const renderX = THREE.MathUtils.lerp(agent.previousX, agent.x, alpha)
+      const renderY = THREE.MathUtils.lerp(agent.previousY, agent.y, alpha)
       const renderZ = THREE.MathUtils.lerp(agent.previousZ, agent.z, alpha)
-      this._syncAgentTransform(agent, renderX, renderZ, playerPosition)
+      const renderRotationX = THREE.MathUtils.lerp(agent.previousRotationX, agent.rotationX, alpha)
+      const renderRotationY = THREE.MathUtils.lerp(agent.previousRotationY, agent.rotationY, alpha)
+      const renderRotationZ = THREE.MathUtils.lerp(agent.previousRotationZ, agent.rotationZ, alpha)
+      this._syncAgentTransform(agent, renderX, renderY, renderZ, renderRotationX, renderRotationY, renderRotationZ, playerPosition)
     }
   }
 
@@ -250,6 +290,9 @@ export class CrowdSystem {
     }
 
     for (const agent of this.agents) {
+      if (agent.isHitActive) {
+        continue
+      }
       this.laneMap.get(agent.laneIndex).push(agent)
     }
 
@@ -270,6 +313,10 @@ export class CrowdSystem {
    * @ignore
    */
   _updateAgent(agent, simulationDelta, playerPosition, playerVelocityZ, playerFacingZ) {
+    if (agent.isHitActive) {
+      return
+    }
+
     if (this.isProximityMoodTriggerEnabled) {
       this._updateAgentMoodFromPlayerProximity(agent, playerPosition, playerVelocityZ, playerFacingZ)
     }
@@ -307,6 +354,158 @@ export class CrowdSystem {
 
     const proposedZ = agent.z + agent.direction * agent.currentSpeed * speedScale * simulationDelta
     agent.z = this._limitForwardMotion(agent, proposedZ)
+  }
+
+  /**
+   * Update one launched NPC with ballistic motion.
+   * @param {object} agent
+   * @param {number} simulationDelta
+   * @param {number} playerZ
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _updateHitAgent(agent, simulationDelta, playerZ) {
+    if (!agent.hitState) {
+      agent.isHitActive = false
+      agent.y = this.walkwayTopY
+      return
+    }
+
+    const shouldDestroyAgent = CrowdHitPhysics.updateHitState(agent.hitState, simulationDelta)
+    agent.x = agent.hitState.x
+    agent.y = agent.hitState.y
+    agent.z = agent.hitState.z
+    agent.rotationY += agent.hitSpinVelocityY * simulationDelta
+    if (!shouldDestroyAgent) {
+      return
+    }
+
+    this._resetAgentAfterHit(agent, playerZ)
+  }
+
+  /**
+   * Resolve collisions between player and NPCs to trigger hit launches.
+   * @param {number} playerStartX
+   * @param {number} playerStartZ
+   * @param {number} playerEndX
+   * @param {number} playerEndZ
+   * @param {number} playerVelocityZ
+   * @param {number} playerFacingZ
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _resolvePlayerNpcHitCollisionsFromSweep(playerStartX, playerStartZ, playerEndX, playerEndZ, playerVelocityZ, playerFacingZ) {
+    for (const agent of this.agents) {
+      if (!this._canAgentBeHit(agent)) {
+        continue
+      }
+
+      if (!this._isPlayerPathCollidingWithAgent(playerStartX, playerStartZ, playerEndX, playerEndZ, agent.x, agent.z)) {
+        continue
+      }
+
+      this._launchHitAgent(agent, playerVelocityZ, playerFacingZ)
+    }
+  }
+
+  /**
+   * Check if one NPC can be launched by player collision.
+   * @param {object} agent
+   * @returns {boolean}
+   * @private
+   * @ignore
+   */
+  _canAgentBeHit(agent) {
+    return !agent.isHitActive
+  }
+
+  /**
+   * Test collision between one swept player segment and one NPC radius.
+   * @param {number} playerStartX
+   * @param {number} playerStartZ
+   * @param {number} playerEndX
+   * @param {number} playerEndZ
+   * @param {number} agentX
+   * @param {number} agentZ
+   * @returns {boolean}
+   * @private
+   * @ignore
+   */
+  _isPlayerPathCollidingWithAgent(playerStartX, playerStartZ, playerEndX, playerEndZ, agentX, agentZ) {
+    const segmentX = playerEndX - playerStartX
+    const segmentZ = playerEndZ - playerStartZ
+    const segmentLengthSquared = segmentX * segmentX + segmentZ * segmentZ
+    if (segmentLengthSquared <= 0.000001) {
+      return this._isPointWithinHitRadius(playerEndX, playerEndZ, agentX, agentZ)
+    }
+
+    const toAgentX = agentX - playerStartX
+    const toAgentZ = agentZ - playerStartZ
+    const projection = (toAgentX * segmentX + toAgentZ * segmentZ) / segmentLengthSquared
+    const clampedProjection = THREE.MathUtils.clamp(projection, 0, 1)
+    const closestX = playerStartX + segmentX * clampedProjection
+    const closestZ = playerStartZ + segmentZ * clampedProjection
+    return this._isPointWithinHitRadius(closestX, closestZ, agentX, agentZ)
+  }
+
+  /**
+   * Check if one point is inside the player/NPC collision radius.
+   * @param {number} pointX
+   * @param {number} pointZ
+   * @param {number} agentX
+   * @param {number} agentZ
+   * @returns {boolean}
+   * @private
+   * @ignore
+   */
+  _isPointWithinHitRadius(pointX, pointZ, agentX, agentZ) {
+    const dx = pointX - agentX
+    const dz = pointZ - agentZ
+    const radiusSquared = this.playerNpcCollisionRadius * this.playerNpcCollisionRadius
+    return dx * dx + dz * dz <= radiusSquared
+  }
+
+  /**
+   * Start one hit launch for the target agent.
+   * @param {object} agent
+   * @param {number} playerVelocityZ
+   * @param {number} playerFacingZ
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _launchHitAgent(agent, playerVelocityZ, playerFacingZ) {
+    if (agent.isHitActive) {
+      return
+    }
+
+    if (this.stoppedAgentId === agent.id) {
+      this.stoppedAgentId = null
+    }
+
+    agent.isInteractionStopped = false
+    agent.isHitActive = true
+    agent.currentSpeed = 0
+    agent.hitState = CrowdHitPhysics.createHitState({
+      startX: agent.x,
+      startY: this.walkwayTopY,
+      startZ: agent.z,
+      walkwayWidth: gameConfig.world.walkwayWidth,
+      walkwayTopY: this.walkwayTopY,
+      playerFacingZ,
+      playerVelocityZ,
+      hitConfig: gameConfig.hit
+    })
+    agent.y = agent.hitState.y
+    agent.hitSpinVelocityY = this._getHitSpinVelocityY()
+    this.onNpcHit?.({
+      id: agent.id,
+      x: agent.x,
+      y: agent.y,
+      z: agent.z
+    })
   }
 
   /**
@@ -528,11 +727,24 @@ export class CrowdSystem {
    * @ignore
    */
   _computePlayerVelocityZ(playerZ, deltaTime) {
-    if (this.lastPlayerZ === null || deltaTime <= 0) {
+    return this._computePlayerVelocityAxis(playerZ, this.lastPlayerZ, deltaTime)
+  }
+
+  /**
+   * Estimate one player velocity axis.
+   * @param {number} currentAxis
+   * @param {number | null} previousAxis
+   * @param {number} deltaTime
+   * @returns {number}
+   * @private
+   * @ignore
+   */
+  _computePlayerVelocityAxis(currentAxis, previousAxis, deltaTime) {
+    if (previousAxis === null || deltaTime <= 0) {
       return 0
     }
 
-    return (playerZ - this.lastPlayerZ) / deltaTime
+    return (currentAxis - previousAxis) / deltaTime
   }
 
   /**
@@ -649,6 +861,10 @@ export class CrowdSystem {
    * @ignore
    */
   _recycleIfOutOfRange(agent, playerZ) {
+    if (agent.isHitActive) {
+      return
+    }
+
     const maxDistance = gameConfig.crowd.spawnDistance
     const dz = agent.z - playerZ
     if (Math.abs(dz) < maxDistance) {
@@ -656,12 +872,43 @@ export class CrowdSystem {
     }
 
     const directionShift = dz > 0 ? -1 : 1
+    this._respawnAgent(agent, playerZ, directionShift)
+  }
+
+  /**
+   * Respawn one launched agent after it falls below destruction depth.
+   * @param {object} agent
+   * @param {number} playerZ
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _resetAgentAfterHit(agent, playerZ) {
+    const directionShift = Math.random() > 0.5 ? 1 : -1
+    this._respawnAgent(agent, playerZ, directionShift)
+  }
+
+  /**
+   * Reinitialize one NPC with fresh spawn values.
+   * @param {object} agent
+   * @param {number} playerZ
+   * @param {number} directionShift
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _respawnAgent(agent, playerZ, directionShift) {
     if (this.stoppedAgentId === agent.id) {
       this.stoppedAgentId = null
     }
 
+    const maxDistance = gameConfig.crowd.spawnDistance
     agent.isInteractionStopped = false
+    agent.isHitActive = false
+    agent.hitState = null
+    agent.hitSpinVelocityY = 0
     agent.z = playerZ + directionShift * (maxDistance - Math.random() * 24)
+    agent.y = this.walkwayTopY
     agent.laneIndex = this._randomNpcLaneIndex()
     agent.direction = Math.random() > 0.5 ? 1 : -1
     const speedProfile = this._createSpeedProfile(this._getRandomBaseSpeed())
@@ -688,7 +935,14 @@ export class CrowdSystem {
     agent.laneChangeCooldown = 0
     agent.x = this._laneToX(agent.laneIndex)
     agent.previousX = agent.x
+    agent.previousY = agent.y
     agent.previousZ = agent.z
+    agent.rotationX = 0
+    agent.rotationY = 0
+    agent.rotationZ = 0
+    agent.previousRotationX = 0
+    agent.previousRotationY = 0
+    agent.previousRotationZ = 0
     this._syncAgentBodyColor(agent)
     this._syncAgentAppearance(agent)
   }
@@ -829,12 +1083,25 @@ export class CrowdSystem {
    * Sync one agent transform into the instanced matrix buffer.
    * @param {object} agent
    * @param {number} renderX
+   * @param {number} renderY
    * @param {number} renderZ
+   * @param {number} renderRotationX
+   * @param {number} renderRotationY
+   * @param {number} renderRotationZ
    * @returns {void}
    * @private
    * @ignore
   */
-  _syncAgentTransform(agent, renderX, renderZ, playerPosition = { x: 0, z: 0 }) {
+  _syncAgentTransform(
+    agent,
+    renderX,
+    renderY,
+    renderZ,
+    renderRotationX = 0,
+    renderRotationY = 0,
+    renderRotationZ = 0,
+    playerPosition = { x: 0, z: 0 }
+  ) {
     const distanceToPlayer = Math.abs(renderZ - playerPosition.z) + Math.abs(renderX - playerPosition.x) * 0.25
     const clipDistance = Math.max(0, gameConfig.crowd.renderClipDistance)
     const shouldRenderAgent = distanceToPlayer <= clipDistance
@@ -844,7 +1111,28 @@ export class CrowdSystem {
     }
 
     const shouldRenderFace = this._computeFaceLodVisibility(agent, distanceToPlayer)
-    this.crowdRenderer.setAgentMatrix(agent.instanceIndex, renderX, renderZ, 1.05, shouldRenderFace)
+    this.crowdRenderer.setAgentMatrix(
+      agent.instanceIndex,
+      renderX,
+      renderZ,
+      renderY,
+      shouldRenderFace,
+      renderRotationX,
+      renderRotationY,
+      renderRotationZ
+    )
+  }
+
+  /**
+   * Build one random hit spin angular speed around y axis.
+   * @returns {number}
+   * @private
+   * @ignore
+   */
+  _getHitSpinVelocityY() {
+    const baseSpinSpeedDeg = Math.max(0, gameConfig.hit.hitSpinSpeedDeg)
+    const spinDirection = Math.random() < 0.5 ? -1 : 1
+    return THREE.MathUtils.degToRad(baseSpinSpeedDeg) * spinDirection
   }
 
   /**

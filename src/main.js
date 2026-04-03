@@ -15,6 +15,8 @@ import { CrowdSystem } from "./crowd/crowdSystem.js"
 import { FlyingCarsSystem } from "./flyingCars/flyingCarsSystem.js"
 import { DevTuningManager } from "./dev/devTuningManager.js"
 import { DevPalette } from "./dev/devPalette.js"
+import { AudioSystem } from "./audio/audioSystem.js"
+import { gameConfig } from "./config/gameConfig.js"
 
 const DEV_MODE_STORAGE_KEY = "cyberlove-dev-mode-v1"
 
@@ -34,7 +36,13 @@ class CyberlovePoc {
     this.player = new PlayerController(this.rendererApp.scene, this.rendererApp.getDomElement(), this.rendererApp.camera)
     this.cameraRig = new CameraRig(this.rendererApp.camera, this.rendererApp.getDomElement(), this.player.mesh)
     this.proceduralCity = new ProceduralCity(this.rendererApp.scene)
-    this.crowd = new CrowdSystem(this.rendererApp.scene)
+    this.audioSystem = new AudioSystem()
+    this.audioSystem.setVolumesFromPercent(gameConfig.sound.musicVolume, gameConfig.sound.hitVolume)
+    this.crowd = new CrowdSystem(this.rendererApp.scene, {
+      onNpcHit: () => {
+        this.audioSystem.playHitSound()
+      }
+    })
     this.flyingCars = new FlyingCarsSystem(this.rendererApp.scene)
     this.raycaster = new THREE.Raycaster()
     this.pointerNdc = new THREE.Vector2()
@@ -52,6 +60,7 @@ class CyberlovePoc {
 
     this._bindInteractionHandlers()
     this._bindInteractionEvents()
+    this.audioSystem.attachUnlockListeners(window)
     this._loop = this._loop.bind(this)
     this._loop()
   }
@@ -74,6 +83,7 @@ class CyberlovePoc {
     this.tuningManager.applyProfileLive(profile)
     const skyProfile = this.rendererApp.applyRuntimeTuning()
     this.player.applyRuntimeTuning()
+    this.audioSystem.setVolumesFromPercent(gameConfig.sound.musicVolume, gameConfig.sound.hitVolume)
 
     const shouldRecreateProceduralCity = this._hasLiveSectionChanged(profile, "buildings") ||
       this._hasLiveSectionChanged(profile, "stands") ||
@@ -107,6 +117,7 @@ class CyberlovePoc {
     this._unbindInteractionEvents()
     this.devPalette?.dispose()
     this.crowd.dispose()
+    this.audioSystem.dispose()
     this.flyingCars.dispose()
     this.proceduralCity.dispose()
     this.cameraRig.dispose()
@@ -135,7 +146,11 @@ class CyberlovePoc {
    */
   _recreateCrowdSystem() {
     this.crowd.dispose()
-    this.crowd = new CrowdSystem(this.rendererApp.scene)
+    this.crowd = new CrowdSystem(this.rendererApp.scene, {
+      onNpcHit: () => {
+        this.audioSystem.playHitSound()
+      }
+    })
     this.crowd.update(0, this.player.mesh.position, this.player.forwardVector.z)
   }
 
@@ -202,6 +217,7 @@ class CyberlovePoc {
    * @ignore
    */
   _onPointerDown(event) {
+    this.audioSystem.notifyUserGesture()
     if (event.button !== 0) {
       return
     }
@@ -267,6 +283,7 @@ class CyberlovePoc {
    * @ignore
    */
   _onCanvasClick(event) {
+    this.audioSystem.notifyUserGesture()
     const now = performance.now()
     if (now - this.pointerInteractionState.lastInteractionTs < 120) {
       return

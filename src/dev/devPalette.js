@@ -14,10 +14,12 @@ export class DevPalette {
     this.onLiveProfileChange = onLiveProfileChange
     this.profile = tuningManager.getProfileClone()
     this.liveApplyTimeoutId = null
-    this.sectionOrder = ["player", "crowd", "flyingCars", "buildings", "stands", "clouds", "sky"]
+    this.sectionOrder = ["player", "crowd", "hit", "flyingCars", "buildings", "stands", "clouds", "sky", "sound"]
     this.sectionLabels = {
       player: "player",
       crowd: "crowd",
+      hit: "hit",
+      sound: "sound",
       flyingCars: "flying cars",
       buildings: "buildings",
       stands: "stands",

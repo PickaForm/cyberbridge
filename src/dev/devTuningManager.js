@@ -341,6 +341,18 @@ export class DevTuningManager {
     )
     gameConfig.crowd.renderClipDistance = _asNumber(crowdValues.renderClipDistance, gameConfig.crowd.renderClipDistance)
 
+    const hitValues = currentValues.hit ?? {}
+    gameConfig.hit.arcHeight = _asNumber(hitValues.arcHeight, gameConfig.hit.arcHeight)
+    gameConfig.hit.arcWidth = Math.max(0, _asNumber(hitValues.arcWidth, gameConfig.hit.arcWidth))
+    gameConfig.hit.fallDepth = Math.max(0.2, _asNumber(hitValues.fallDepth, gameConfig.hit.fallDepth))
+    gameConfig.hit.initialSpeed = Math.max(0.1, _asNumber(hitValues.initialSpeed, gameConfig.hit.initialSpeed))
+    gameConfig.hit.launchAngleDeg = Math.min(85, Math.max(0, _asNumber(hitValues.launchAngleDeg, gameConfig.hit.launchAngleDeg)))
+    gameConfig.hit.hitSpinSpeedDeg = Math.max(0, _asNumber(hitValues.hitSpinSpeedDeg, gameConfig.hit.hitSpinSpeedDeg))
+
+    const soundValues = currentValues.sound ?? {}
+    gameConfig.sound.musicVolume = Math.min(100, Math.max(0, _asNumber(soundValues.musicVolume, gameConfig.sound.musicVolume)))
+    gameConfig.sound.hitVolume = Math.min(100, Math.max(0, _asNumber(soundValues.hitVolume, gameConfig.sound.hitVolume)))
+
     const flyingCarsValues = currentValues.flyingCars ?? {}
     gameConfig.flyingCars.maxCars = Math.max(1, Math.round(_asNumber(flyingCarsValues.maxCars, gameConfig.flyingCars.maxCars)))
     gameConfig.flyingCars.spawnDistance = _asNumber(flyingCarsValues.spawnDistance, gameConfig.flyingCars.spawnDistance)

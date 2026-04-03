@@ -41,6 +41,18 @@ export const gameConfig = {
     maxSimulationStepsPerFrame: 3,
     renderClipDistance: 120
   },
+  hit: {
+    arcHeight: 3.8,
+    arcWidth: 0,
+    fallDepth: 38,
+    initialSpeed: 16,
+    launchAngleDeg: 45,
+    hitSpinSpeedDeg: 720
+  },
+  sound: {
+    musicVolume: 26,
+    hitVolume: 90
+  },
   flyingCars: {
     maxCars: 120,
     spawnDistance: 260,
