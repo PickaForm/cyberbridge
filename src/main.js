@@ -33,7 +33,7 @@ const GAME_LEVELS = [
     objectiveText: "Pas taper les filles !",
     loseText: "T'as percuté 10 filles, boulet !",
     winText: "Bravo, t'as parcouru 1000m sans incident !",
-    retryText: "Faire plus attention",
+    retryText: "Etre plus gentleman",
     nextLevelText: "Continuer"
   },
   {
@@ -82,7 +82,7 @@ const GAME_LEVELS = [
     loseText: "Hmmm, pas assez de réflexes. Recalé !",
     winText: "OMG, t'as des réflexes de mouche !",
     retryText: "OK, compris, je vais Use the Force.",
-    nextLevelText: "Y'a pas de next level, j'ai autre chose à faire, moi"
+    nextLevelText: "Y'a pas de next level, j'ai du boulot. Relancer le jeu ?"
   }
 ]
 
@@ -123,6 +123,7 @@ class CyberlovePoc {
     this.boyHits = 0
     this.distanceMeters = 0
     this.maxDistanceMeters = 0
+    this.isHitCountingEnabledForFrame = false
     this.levelElapsedMs = 0
     this.currentLevelIndex = 0
     this.gameState = "intro"
@@ -200,8 +201,8 @@ class CyberlovePoc {
   _startCurrentLevel() {
     const levelDefinition = this._getCurrentLevelDefinition()
     gameConfig.player.moveSpeed = levelDefinition.moveSpeed
-    this._resetRunStats()
     this._resetPlayerAndSystemsForLevel()
+    this._resetRunStats()
     this._showLevelIntro(levelDefinition)
   }
 
@@ -227,6 +228,7 @@ class CyberlovePoc {
     this.boyHits = 0
     this.distanceMeters = 0
     this.maxDistanceMeters = 0
+    this.isHitCountingEnabledForFrame = false
     this.levelElapsedMs = 0
     this._renderScore()
     this._renderHitCounters()
@@ -279,6 +281,7 @@ class CyberlovePoc {
     }
 
     this.levelElapsedMs = 0
+    this.isHitCountingEnabledForFrame = false
     this.gameState = "playing"
     this._renderChronoHud()
     this._hideOverlay()
@@ -577,7 +580,7 @@ class CyberlovePoc {
     }
 
     this.audioSystem.playHitSound()
-    if (this._isPlayerMovingBackward() && this._isPlayerBehindMaxDistance()) {
+    if (!this.isHitCountingEnabledForFrame) {
       return
     }
 
@@ -614,17 +617,6 @@ class CyberlovePoc {
   _isPlayerMovingBackward() {
     const forwardVelocity = Number(this.player?.velocity?.forward ?? 0)
     return forwardVelocity < -0.05
-  }
-
-  /**
-   * Check whether player current distance is behind the max reached progress.
-   * @returns {boolean}
-   * @private
-   * @ignore
-   */
-  _isPlayerBehindMaxDistance() {
-    const currentDistance = this._computeDisplayDistance(this.player.mesh.position)
-    return currentDistance < this.maxDistanceMeters - 0.001
   }
 
   /**
@@ -975,9 +967,12 @@ class CyberlovePoc {
     this.lastFrameTime = now
 
     if (this.gameState === "playing") {
+      const previousMaxDistance = this.maxDistanceMeters
       this.player.update(deltaTime)
       this.levelElapsedMs += deltaTime * 1000
       this._renderDistance(this.player.mesh.position)
+      const hasNewDistanceProgress = this.maxDistanceMeters > previousMaxDistance + 0.001
+      this.isHitCountingEnabledForFrame = hasNewDistanceProgress && !this._isPlayerMovingBackward()
       this._renderChronoHud()
       this._evaluateLevelCompletion()
       this.proceduralCity.update(this.player.mesh.position.z)
@@ -986,6 +981,7 @@ class CyberlovePoc {
       this.cameraRig.update(deltaTime)
     } else {
       const pausedDeltaTime = 0
+      this.isHitCountingEnabledForFrame = false
       this._renderChronoHud()
       this.proceduralCity.update(this.player.mesh.position.z)
       this.crowd.update(pausedDeltaTime, this.player.mesh.position, this.player.forwardVector.z)
