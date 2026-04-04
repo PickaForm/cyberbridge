@@ -66,7 +66,7 @@ const GAME_LEVELS = [
     loseText: "Manque d'ambition !",
     winText: "Wow, t'es une vraie machine à baffes, respect !",
     retryText: "Baffer mieux",
-    nextLevelText: "Yep, envoie la sauce"
+    nextLevelText: "Je sais, donc laisse moi passer au level suivant, sinon..."
   },
   {
     id: 4,
@@ -577,6 +577,10 @@ class CyberlovePoc {
     }
 
     this.audioSystem.playHitSound()
+    if (this._isPlayerMovingBackward() && this._isPlayerBehindMaxDistance()) {
+      return
+    }
+
     const isGirlHit = hitPayload?.bodyVariant === "pink"
     const hitScoreDelta = isGirlHit ? -10 : 10
     this.score = Math.max(0, this.score + hitScoreDelta)
@@ -599,6 +603,28 @@ class CyberlovePoc {
     if (!isGirlHit && loseOnBoyHitThreshold > 0 && this.boyHits >= loseOnBoyHitThreshold) {
       this._finishLevel(false, levelDefinition.loseText)
     }
+  }
+
+  /**
+   * Check whether player is currently moving backward.
+   * @returns {boolean}
+   * @private
+   * @ignore
+   */
+  _isPlayerMovingBackward() {
+    const forwardVelocity = Number(this.player?.velocity?.forward ?? 0)
+    return forwardVelocity < -0.05
+  }
+
+  /**
+   * Check whether player current distance is behind the max reached progress.
+   * @returns {boolean}
+   * @private
+   * @ignore
+   */
+  _isPlayerBehindMaxDistance() {
+    const currentDistance = this._computeDisplayDistance(this.player.mesh.position)
+    return currentDistance < this.maxDistanceMeters - 0.001
   }
 
   /**
