@@ -89,7 +89,7 @@ const GAME_LEVELS = [
 /**
  * Game orchestrator.
  */
-class CyberlovePoc {
+class CyberStreet {
   /**
    * @param {HTMLElement} appElement
    * @param {DevTuningManager} tuningManager
@@ -1138,7 +1138,7 @@ if (hudElement && hudCloseButton) {
 const tuningManager = new DevTuningManager()
 tuningManager.applyRuntime()
 
-const gameInstance = new CyberlovePoc(appElement, tuningManager)
+const gameInstance = new CyberStreet(appElement, tuningManager)
 const isDevModeEnabled = _resolveDevMode()
 if (isDevModeEnabled) {
   const devPalette = new DevPalette(tuningManager, (profile) => {
@@ -1149,5 +1149,5 @@ if (isDevModeEnabled) {
   gameInstance.setDevPalette(devPalette)
 }
 
-window.cyberlovePoc = gameInstance
+window.CyberStreet = gameInstance
 window.cyberloveDevTuningManager = tuningManager
