@@ -75,7 +75,7 @@ const GAME_LEVELS = [
     targetChrono: 0,
     targetGirlsHit: 0,
     targetBoysHit: 0,
-    targetScore: 100,
+    targetScore: 200,
     loseOnGirlHitThreshold: 0,
     loseOnBoyHitThreshold: 0,
     objectiveText: "Visez surtout des mecs. Question de ratio...\nMec +10, Fille -10",
