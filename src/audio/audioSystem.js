@@ -13,11 +13,13 @@ export class AudioSystem {
    * @param {string[]} options.hitSfxUrls
    * @param {string} options.hitAutoPrefix
    * @param {string} options.hitAutoExtension
-   * @param {number} options.maxHitVariants
-   * @param {number} options.musicVolume
-   * @param {number} options.hitVolume
-   * @param {number} options.hitPoolPerVariant
-   */
+ * @param {number} options.maxHitVariants
+ * @param {number} options.musicVolume
+ * @param {number} options.hitVolume
+ * @param {number} options.hitPoolPerVariant
+ * @param {number} options.hitBurstSpacingMs
+ * @param {number} options.hitBurstMaxQueue
+ */
   constructor(options = {}) {
     const {
       musicUrl = "/audio/music.mp3",
@@ -27,7 +29,9 @@ export class AudioSystem {
       maxHitVariants = 12,
       musicVolume = 0.26,
       hitVolume = 0.9,
-      hitPoolPerVariant = 3
+      hitPoolPerVariant = 6,
+      hitBurstSpacingMs = 28,
+      hitBurstMaxQueue = 64
     } = options
 
     this._unlockTarget = null
@@ -48,6 +52,10 @@ export class AudioSystem {
     this.hitVariantUrls = []
     this.hitAssetsPrewarmPromise = null
     this.prewarmedHitAssets = []
+    this.hitBurstSpacingMs = Math.max(8, Math.round(hitBurstSpacingMs))
+    this.hitBurstMaxQueue = Math.max(1, Math.round(hitBurstMaxQueue))
+    this.pendingHitBurstCount = 0
+    this.hitBurstTimeoutId = null
     const fallbackHitUrl = `${this.hitAutoPrefix}1.${this.hitAutoExtension}`
     const initialHitUrl = this.hitSfxUrlsOverride[0] ?? fallbackHitUrl
     this.hitFallbackPool = this._createHitFallbackPool(initialHitUrl, this.hitVolume, this.hitPoolPerVariant)
@@ -105,12 +113,7 @@ export class AudioSystem {
       return
     }
 
-    if (this.hitAudioContext && this.hitAudioBuffers.length > 0) {
-      this._playBufferedHitSound()
-      return
-    }
-
-    this._playFallbackHitSound()
+    this._enqueueHitSoundPlayback()
   }
 
   /**
@@ -131,6 +134,12 @@ export class AudioSystem {
       audioInstance.pause()
       audioInstance.src = ""
     }
+
+    if (this.hitBurstTimeoutId !== null) {
+      clearTimeout(this.hitBurstTimeoutId)
+      this.hitBurstTimeoutId = null
+    }
+    this.pendingHitBurstCount = 0
 
     if (this.hitAudioContext) {
       this.hitAudioContext.close().catch(() => {})
@@ -208,10 +217,109 @@ export class AudioSystem {
       return
     }
 
-    const audioInstance = this.hitFallbackPool[this.hitFallbackCursor]
-    this.hitFallbackCursor = (this.hitFallbackCursor + 1) % this.hitFallbackPool.length
+    const nextAudioIndex = this._getNextFallbackAudioIndex()
+    const audioInstance = this.hitFallbackPool[nextAudioIndex]
+    this.hitFallbackCursor = (nextAudioIndex + 1) % this.hitFallbackPool.length
     audioInstance.currentTime = 0
     audioInstance.play().catch(() => {})
+  }
+
+  /**
+   * Queue hit playback to preserve audibility during rapid bursts.
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _enqueueHitSoundPlayback() {
+    this.pendingHitBurstCount = Math.min(this.hitBurstMaxQueue, this.pendingHitBurstCount + 1)
+    if (this.hitBurstTimeoutId !== null) {
+      return
+    }
+
+    this._drainHitSoundQueue()
+  }
+
+  /**
+   * Play queued hit sounds with short spacing to avoid full overlap.
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _drainHitSoundQueue() {
+    if (this.pendingHitBurstCount <= 0) {
+      this.hitBurstTimeoutId = null
+      return
+    }
+
+    this.pendingHitBurstCount -= 1
+    this._playSingleHitSoundNow()
+
+    if (this.pendingHitBurstCount <= 0) {
+      this.hitBurstTimeoutId = null
+      return
+    }
+
+    this.hitBurstTimeoutId = setTimeout(() => {
+      this._drainHitSoundQueue()
+    }, this.hitBurstSpacingMs)
+  }
+
+  /**
+   * Play one hit immediately using buffered or fallback path.
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _playSingleHitSoundNow() {
+    if (this._isBufferedHitPlaybackReady()) {
+      this._playBufferedHitSound()
+      return
+    }
+
+    this._playFallbackHitSound()
+  }
+
+  /**
+   * Check if Web Audio playback can be used right now.
+   * @returns {boolean}
+   * @private
+   * @ignore
+   */
+  _isBufferedHitPlaybackReady() {
+    if (!this.hitAudioContext || this.hitAudioBuffers.length <= 0) {
+      return false
+    }
+
+    if (this.hitAudioContext.state === "running") {
+      return true
+    }
+
+    if (this.hitAudioContext.state === "suspended") {
+      this.hitAudioContext.resume().catch(() => {})
+    }
+    return false
+  }
+
+  /**
+   * Find fallback audio index that is currently paused, else use round-robin.
+   * @returns {number}
+   * @private
+   * @ignore
+   */
+  _getNextFallbackAudioIndex() {
+    if (this.hitFallbackPool.length <= 0) {
+      return 0
+    }
+
+    for (let offset = 0; offset < this.hitFallbackPool.length; offset += 1) {
+      const candidateIndex = (this.hitFallbackCursor + offset) % this.hitFallbackPool.length
+      const candidateAudio = this.hitFallbackPool[candidateIndex]
+      if (!candidateAudio || candidateAudio.paused || candidateAudio.ended) {
+        return candidateIndex
+      }
+    }
+
+    return this.hitFallbackCursor
   }
 
   /**
