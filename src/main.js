@@ -320,7 +320,7 @@ class CyberStreet {
     }
 
     if (targetChrono > 0) {
-      objectiveLines.push(`Vous avez ${this._formatChronoSeconds(targetChrono)} secondes !`)
+      objectiveLines.push(`T'as exactement ${this._formatChronoSeconds(targetChrono)} secondes !`)
     }
 
     const baseText = String(levelDefinition.objectiveText ?? "").trim()
