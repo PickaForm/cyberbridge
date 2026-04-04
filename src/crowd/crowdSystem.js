@@ -40,8 +40,9 @@ export class CrowdSystem {
     this.faceToFaceBoxHalfWidth = this.laneWidth * 0.6
     this.faceToFaceBoxHalfDepth = 3.4
     this.walkwayTopY = 1.05
-    this.playerNpcCollisionRadius = 1.05
+    this.npcCollisionRadius = 0.62
     this.lastPlayerX = null
+    this.lastPlayerY = null
     this.onNpcHit = typeof onNpcHit === "function" ? onNpcHit : null
 
     this._spawnInitialAgents()
@@ -58,6 +59,7 @@ export class CrowdSystem {
     const cappedDeltaTime = Math.min(deltaTime, 0.1)
     const playerVelocityZ = this._computePlayerVelocityZ(playerPosition.z, cappedDeltaTime)
     const playerStartX = this.lastPlayerX ?? playerPosition.x
+    const playerStartY = this.lastPlayerY ?? playerPosition.y
     const playerStartZ = this.lastPlayerZ ?? playerPosition.z
     this.simulationAccumulator += cappedDeltaTime
     let simulationStepCount = 0
@@ -72,12 +74,22 @@ export class CrowdSystem {
       this.simulationAccumulator = this.simulationStep
     }
 
-    this._resolvePlayerNpcHitCollisionsFromSweep(playerStartX, playerStartZ, playerPosition.x, playerPosition.z, playerVelocityZ, playerFacingZ)
+    this._resolvePlayerNpcHitCollisionsFromSweep(
+      playerStartX,
+      playerStartY,
+      playerStartZ,
+      playerPosition.x,
+      playerPosition.y,
+      playerPosition.z,
+      playerVelocityZ,
+      playerFacingZ
+    )
 
     const interpolationAlpha = this.simulationAccumulator / this.simulationStep
     this._renderInterpolated(interpolationAlpha, playerPosition)
     this.crowdRenderer.commit()
     this.lastPlayerX = playerPosition.x
+    this.lastPlayerY = playerPosition.y
     this.lastPlayerZ = playerPosition.z
   }
 
@@ -91,6 +103,8 @@ export class CrowdSystem {
     this.laneMap.clear()
     this.stoppedAgentId = null
     this.lastPlayerX = null
+    this.lastPlayerY = null
+    this.lastPlayerZ = null
   }
 
   /**
@@ -387,8 +401,10 @@ export class CrowdSystem {
   /**
    * Resolve collisions between player and NPCs to trigger hit launches.
    * @param {number} playerStartX
+   * @param {number} playerStartY
    * @param {number} playerStartZ
    * @param {number} playerEndX
+   * @param {number} playerEndY
    * @param {number} playerEndZ
    * @param {number} playerVelocityZ
    * @param {number} playerFacingZ
@@ -396,13 +412,22 @@ export class CrowdSystem {
    * @private
    * @ignore
    */
-  _resolvePlayerNpcHitCollisionsFromSweep(playerStartX, playerStartZ, playerEndX, playerEndZ, playerVelocityZ, playerFacingZ) {
+  _resolvePlayerNpcHitCollisionsFromSweep(
+    playerStartX,
+    playerStartY,
+    playerStartZ,
+    playerEndX,
+    playerEndY,
+    playerEndZ,
+    playerVelocityZ,
+    playerFacingZ
+  ) {
     for (const agent of this.agents) {
       if (!this._canAgentBeHit(agent)) {
         continue
       }
 
-      if (!this._isPlayerPathCollidingWithAgent(playerStartX, playerStartZ, playerEndX, playerEndZ, agent.x, agent.z)) {
+      if (!this._isPlayerPathCollidingWithAgent(playerStartX, playerStartY, playerStartZ, playerEndX, playerEndY, playerEndZ, agent.x, agent.y, agent.z)) {
         continue
       }
 
@@ -422,49 +447,60 @@ export class CrowdSystem {
   }
 
   /**
-   * Test collision between one swept player segment and one NPC radius.
+   * Test 3D collision between one swept player segment and one NPC sphere.
    * @param {number} playerStartX
+   * @param {number} playerStartY
    * @param {number} playerStartZ
    * @param {number} playerEndX
+   * @param {number} playerEndY
    * @param {number} playerEndZ
    * @param {number} agentX
+   * @param {number} agentY
    * @param {number} agentZ
    * @returns {boolean}
    * @private
    * @ignore
    */
-  _isPlayerPathCollidingWithAgent(playerStartX, playerStartZ, playerEndX, playerEndZ, agentX, agentZ) {
+  _isPlayerPathCollidingWithAgent(playerStartX, playerStartY, playerStartZ, playerEndX, playerEndY, playerEndZ, agentX, agentY, agentZ) {
     const segmentX = playerEndX - playerStartX
+    const segmentY = playerEndY - playerStartY
     const segmentZ = playerEndZ - playerStartZ
-    const segmentLengthSquared = segmentX * segmentX + segmentZ * segmentZ
+    const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY + segmentZ * segmentZ
     if (segmentLengthSquared <= 0.000001) {
-      return this._isPointWithinHitRadius(playerEndX, playerEndZ, agentX, agentZ)
+      return this._isPointWithinHitRadius(playerEndX, playerEndY, playerEndZ, agentX, agentY, agentZ)
     }
 
     const toAgentX = agentX - playerStartX
+    const toAgentY = agentY - playerStartY
     const toAgentZ = agentZ - playerStartZ
-    const projection = (toAgentX * segmentX + toAgentZ * segmentZ) / segmentLengthSquared
+    const projection = (toAgentX * segmentX + toAgentY * segmentY + toAgentZ * segmentZ) / segmentLengthSquared
     const clampedProjection = THREE.MathUtils.clamp(projection, 0, 1)
     const closestX = playerStartX + segmentX * clampedProjection
+    const closestY = playerStartY + segmentY * clampedProjection
     const closestZ = playerStartZ + segmentZ * clampedProjection
-    return this._isPointWithinHitRadius(closestX, closestZ, agentX, agentZ)
+    return this._isPointWithinHitRadius(closestX, closestY, closestZ, agentX, agentY, agentZ)
   }
 
   /**
    * Check if one point is inside the player/NPC collision radius.
    * @param {number} pointX
+   * @param {number} pointY
    * @param {number} pointZ
    * @param {number} agentX
+   * @param {number} agentY
    * @param {number} agentZ
    * @returns {boolean}
    * @private
    * @ignore
    */
-  _isPointWithinHitRadius(pointX, pointZ, agentX, agentZ) {
+  _isPointWithinHitRadius(pointX, pointY, pointZ, agentX, agentY, agentZ) {
     const dx = pointX - agentX
+    const dy = pointY - agentY
     const dz = pointZ - agentZ
-    const radiusSquared = this.playerNpcCollisionRadius * this.playerNpcCollisionRadius
-    return dx * dx + dz * dz <= radiusSquared
+    const playerCollisionRadius = Math.max(0, gameConfig.player.collisionRadius)
+    const combinedCollisionRadius = playerCollisionRadius + this.npcCollisionRadius
+    const radiusSquared = combinedCollisionRadius * combinedCollisionRadius
+    return dx * dx + dy * dy + dz * dz <= radiusSquared
   }
 
   /**
@@ -502,6 +538,7 @@ export class CrowdSystem {
     agent.hitSpinVelocityY = this._getHitSpinVelocityY()
     this.onNpcHit?.({
       id: agent.id,
+      bodyVariant: agent.bodyVariant,
       x: agent.x,
       y: agent.y,
       z: agent.z

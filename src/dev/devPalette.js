@@ -8,10 +8,12 @@ export class DevPalette {
   /**
    * @param {object} tuningManager
    * @param {(profile: object) => void} onLiveProfileChange
+   * @param {(levelId: number) => void} onTestLevelRequest
    */
-  constructor(tuningManager, onLiveProfileChange = null) {
+  constructor(tuningManager, onLiveProfileChange = null, onTestLevelRequest = null) {
     this.tuningManager = tuningManager
     this.onLiveProfileChange = onLiveProfileChange
+    this.onTestLevelRequest = onTestLevelRequest
     this.profile = tuningManager.getProfileClone()
     this.liveApplyTimeoutId = null
     this.sectionOrder = ["player", "crowd", "hit", "flyingCars", "buildings", "stands", "clouds", "sky", "sound"]
@@ -29,6 +31,7 @@ export class DevPalette {
     this.sectionStateStorageKey = "cyberlove-dev-palette-sections-v1"
     this.sectionState = this._loadSectionState()
     this.rootElement = this._createRootElement()
+    this._renderLevelTestControls()
     this._renderSections()
     this._renderActions()
     document.body.appendChild(this.rootElement)
@@ -147,6 +150,65 @@ export class DevPalette {
     actionsElement.appendChild(saveButton)
     actionsElement.appendChild(resetButton)
     this.rootElement.appendChild(actionsElement)
+  }
+
+  /**
+   * Render level testing controls at the top of the palette.
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _renderLevelTestControls() {
+    const levelTestRowElement = document.createElement("div")
+    levelTestRowElement.className = "dev-palette-level-test"
+
+    const levelInputElement = document.createElement("input")
+    levelInputElement.type = "number"
+    levelInputElement.className = "dev-palette-level-test-input"
+    levelInputElement.min = "1"
+    levelInputElement.step = "1"
+    levelInputElement.value = "1"
+    levelInputElement.setAttribute("aria-label", "Level id")
+
+    const testButtonElement = document.createElement("button")
+    testButtonElement.type = "button"
+    testButtonElement.className = "dev-palette-btn dev-palette-level-test-btn"
+    testButtonElement.textContent = "Tester le level!"
+    testButtonElement.addEventListener("click", () => {
+      this._submitLevelTest(levelInputElement.value)
+    })
+
+    levelInputElement.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return
+      }
+      this._submitLevelTest(levelInputElement.value)
+    })
+
+    levelTestRowElement.appendChild(levelInputElement)
+    levelTestRowElement.appendChild(testButtonElement)
+    this.rootElement.appendChild(levelTestRowElement)
+  }
+
+  /**
+   * Validate and forward level test request.
+   * @param {unknown} rawLevelId
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _submitLevelTest(rawLevelId) {
+    if (!this.onTestLevelRequest) {
+      return
+    }
+
+    const numericLevelId = Number(rawLevelId)
+    if (!Number.isFinite(numericLevelId)) {
+      return
+    }
+
+    const levelId = Math.max(1, Math.round(numericLevelId))
+    this.onTestLevelRequest(levelId)
   }
 
   /**

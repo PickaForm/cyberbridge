@@ -69,16 +69,17 @@ export class FlyingCarsSystem {
   _spawnInitialCars() {
     const carCount = Math.max(1, Math.round(gameConfig.flyingCars.maxCars))
     const spawnDistance = Math.max(8, gameConfig.flyingCars.spawnDistance)
+    const carScale = this._getCarScale()
 
     for (let carIndex = 0; carIndex < carCount; carIndex += 1) {
       const lane = this._pickRandomLane()
       const appearance = this._createCarAppearance()
       appearance.direction = lane.direction
-      const z = this._findSafeLaneSpawnZ(lane.index, appearance.lengthScale, -spawnDistance, spawnDistance)
+      const z = this._findSafeLaneSpawnZ(lane.index, appearance.lengthScale * carScale, -spawnDistance, spawnDistance)
       const car = this._createCar(carIndex, z, lane, appearance)
       this.cars.push(car)
       this.flyingCarsRenderer.setCarAppearance(car.instanceIndex, car.appearance)
-      this.flyingCarsRenderer.setCarMatrix(car.instanceIndex, car.x, car.y, car.z, true)
+      this.flyingCarsRenderer.setCarMatrix(car.instanceIndex, car.x, car.y, car.z, true, carScale)
     }
 
     this.flyingCarsRenderer.commit()
@@ -196,6 +197,7 @@ export class FlyingCarsSystem {
    */
   _recycleIfOutOfRange(car, playerZ) {
     const spawnDistance = Math.max(8, gameConfig.flyingCars.spawnDistance)
+    const carScale = this._getCarScale()
     const dz = car.z - playerZ
     if (Math.abs(dz) < spawnDistance) {
       return
@@ -213,7 +215,7 @@ export class FlyingCarsSystem {
     car.appearance.direction = car.direction
     car.z = this._findSafeLaneSpawnZ(
       car.laneIndex,
-      car.appearance.lengthScale,
+      car.appearance.lengthScale * carScale,
       playerZ + directionShift * Math.max(6, spawnDistance * 0.72),
       playerZ + directionShift * spawnDistance,
       car.instanceIndex
@@ -268,6 +270,8 @@ export class FlyingCarsSystem {
    * @ignore
    */
   _isLaneSpawnSlotFree(laneIndex, candidateZ, candidateLengthScale, ignoredInstanceIndex = undefined) {
+    const carScale = this._getCarScale()
+
     for (const otherCar of this.cars) {
       if (otherCar.laneIndex !== laneIndex) {
         continue
@@ -277,7 +281,7 @@ export class FlyingCarsSystem {
         continue
       }
 
-      const otherLengthScale = otherCar.appearance?.lengthScale ?? 1.35
+      const otherLengthScale = (otherCar.appearance?.lengthScale ?? 1.35) * carScale
       const minSpacing = this._computeSpawnSpacing(candidateLengthScale, otherLengthScale)
       if (Math.abs(otherCar.z - candidateZ) < minSpacing) {
         return false
@@ -309,10 +313,21 @@ export class FlyingCarsSystem {
    */
   _syncCarTransform(car, playerPosition) {
     const clipDistance = Math.max(0, gameConfig.flyingCars.renderClipDistance)
+    const carScale = this._getCarScale()
     const distanceToPlayer = Math.abs(car.z - playerPosition.z) + Math.abs(car.x - playerPosition.x) * 0.22
     const shouldRender = distanceToPlayer <= clipDistance
     car.appearance.direction = car.direction
-    this.flyingCarsRenderer.setCarMatrix(car.instanceIndex, car.x, car.y, car.z, shouldRender)
+    this.flyingCarsRenderer.setCarMatrix(car.instanceIndex, car.x, car.y, car.z, shouldRender, carScale)
+  }
+
+  /**
+   * Read global flying car size multiplier from runtime config.
+   * @returns {number}
+   * @private
+   * @ignore
+   */
+  _getCarScale() {
+    return Math.max(0.05, gameConfig.flyingCars.scale ?? 1)
   }
 
   /**

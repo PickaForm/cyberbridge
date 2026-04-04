@@ -66,9 +66,10 @@ export class FlyingCarsRenderer {
    * @param {number} y
    * @param {number} z
    * @param {boolean} visible
+   * @param {number} sizeScale
    * @returns {void}
    */
-  setCarMatrix(instanceIndex, x, y, z, visible = true) {
+  setCarMatrix(instanceIndex, x, y, z, visible = true, sizeScale = 1) {
     if (!visible) {
       this._hideInstance(this.normalMesh, instanceIndex)
       this._hideInstance(this.glowMesh, instanceIndex)
@@ -83,9 +84,10 @@ export class FlyingCarsRenderer {
       direction: 1
     }
 
-    const lengthScale = profile.lengthScale ?? 1.35
-    const widthScale = profile.widthScale ?? 0.85
-    const heightScale = profile.heightScale ?? 0.65
+    const safeSizeScale = Math.max(0.05, sizeScale)
+    const lengthScale = (profile.lengthScale ?? 1.35) * safeSizeScale
+    const widthScale = (profile.widthScale ?? 0.85) * safeSizeScale
+    const heightScale = (profile.heightScale ?? 0.65) * safeSizeScale
     const direction = profile.direction ?? 1
     const isGlow = profile.isGlow === true
     const glowIntensity = THREE.MathUtils.clamp(profile.glowIntensity ?? 1, 0, 3)

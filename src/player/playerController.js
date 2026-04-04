@@ -20,7 +20,10 @@ export class PlayerController {
     this.camera = camera
     this.playerRenderer = new PlayerRenderer(scene)
     this.mesh = this.playerRenderer.getMesh()
-    this.position = { x: 0, y: 1.08, z: 0 }
+    this.baseY = 1.08
+    this.position = { x: 0, y: this.baseY, z: 0 }
+    this.verticalVelocity = 0
+    this.isJumpRequested = false
     this.forwardVector = new THREE.Vector3(0, 0, 1)
     this.rightVector = new THREE.Vector3(1, 0, 0)
     this.upVector = new THREE.Vector3(0, 1, 0)
@@ -49,6 +52,7 @@ export class PlayerController {
    */
   update(deltaTime) {
     this._updateInputState()
+    this._tryStartJump()
 
     const targetForward = this.inputState.forward
     const targetStrafe = this.inputState.strafe
@@ -64,7 +68,7 @@ export class PlayerController {
 
     const xLimit = gameConfig.world.walkwayWidth * 0.5 - gameConfig.player.xMargin
     this.position.x = THREE.MathUtils.clamp(this.position.x, -xLimit, xLimit)
-    this.position.y = 1.08
+    this._updateJumpPhysics(deltaTime)
     this.playerRenderer.setPosition(this.position.x, this.position.y, this.position.z)
   }
 
@@ -74,6 +78,30 @@ export class PlayerController {
    */
   applyRuntimeTuning() {
     this.playerRenderer.applyRuntimeTuning()
+  }
+
+  /**
+   * Reset player movement state and teleport to a target position.
+   * @param {THREE.Vector3} nextPosition
+   * @returns {void}
+   */
+  resetState(nextPosition) {
+    this.position.x = nextPosition.x
+    this.position.y = nextPosition.y
+    this.position.z = nextPosition.z
+    this.verticalVelocity = 0
+    this.isJumpRequested = false
+    this.velocity.forward = 0
+    this.velocity.strafe = 0
+    this.inputState.forward = 0
+    this.inputState.strafe = 0
+    this.keys.clear()
+    this.touchMovePointerId = null
+    this.touchMoveStart.x = 0
+    this.touchMoveStart.y = 0
+    this.touchMoveCurrent.x = 0
+    this.touchMoveCurrent.y = 0
+    this.playerRenderer.setPosition(this.position.x, this.position.y, this.position.z)
   }
 
   /**
@@ -166,6 +194,11 @@ export class PlayerController {
   _onKeyDown(event) {
     this.keys.set(`code:${event.code}`, true)
     this.keys.set(`key:${event.key.toLowerCase()}`, true)
+
+    if (event.code === "Space") {
+      this.isJumpRequested = true
+      event.preventDefault()
+    }
   }
 
   /**
@@ -178,6 +211,55 @@ export class PlayerController {
   _onKeyUp(event) {
     this.keys.set(`code:${event.code}`, false)
     this.keys.set(`key:${event.key.toLowerCase()}`, false)
+  }
+
+  /**
+   * Start a jump from the ground using configurable target height and gravity.
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _tryStartJump() {
+    if (!this.isJumpRequested) {
+      return
+    }
+
+    this.isJumpRequested = false
+    if (!this._isOnGround()) {
+      return
+    }
+
+    const gravity = Math.max(0.01, gameConfig.player.gravity)
+    const jumpHeight = Math.max(0, gameConfig.player.jumpHeight)
+    this.verticalVelocity = Math.sqrt(2 * gravity * jumpHeight)
+  }
+
+  /**
+   * Integrate vertical velocity with gravity and clamp back to ground.
+   * @param {number} deltaTime
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _updateJumpPhysics(deltaTime) {
+    const gravity = Math.max(0.01, gameConfig.player.gravity)
+    this.verticalVelocity -= gravity * deltaTime
+    this.position.y += this.verticalVelocity * deltaTime
+
+    if (this.position.y <= this.baseY) {
+      this.position.y = this.baseY
+      this.verticalVelocity = 0
+    }
+  }
+
+  /**
+   * Check if player currently touches the walkway.
+   * @returns {boolean}
+   * @private
+   * @ignore
+   */
+  _isOnGround() {
+    return this.position.y <= this.baseY + 0.0001
   }
 
   /**

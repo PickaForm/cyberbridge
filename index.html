@@ -9,11 +9,36 @@
   <body>
     <div id="app"></div>
     <div id="hud">
-      <button id="hudCloseBtn" type="button" aria-label="Fermer l'aide">×</button>
+      <button id="hudCloseBtn" type="button" aria-label="Fermer l'aide">&times;</button>
       <p>CyberStreet demo</p>
-      <p>Z/S = avancer/reculer, Q/D = lateral</p>
+      <p>Z/S = avancer/reculer, Q/D = lateral, Espace = sauter</p>
       <p>Clic gauche + drag = orbit camera</p>
       <p>Mobile: gauche ecran pour bouger, droite pour la camera</p>
+    </div>
+    <div id="scoreHud" aria-live="polite">
+      <span id="scoreValue">0</span>
+      <span id="distanceValue">Distance 0.0 m</span>
+      <div id="hitsHud">
+        <span class="hitsLine">
+          <span class="hitsSymbol hitsSymbolGirl" aria-hidden="true">▮</span>
+          <span id="girlHitsValue">0</span>
+        </span>
+        <span class="hitsLine">
+          <span class="hitsSymbol hitsSymbolBoy" aria-hidden="true">▮</span>
+          <span id="boyHitsValue">0</span>
+        </span>
+      </div>
+    </div>
+    <div id="chronoHud" class="chrono-hud-hidden" aria-live="polite">
+      <span id="chronoValue">0.0s</span>
+    </div>
+    <div id="levelOverlay" class="level-overlay level-overlay-hidden" aria-live="polite">
+      <div class="level-overlay-card">
+        <div id="levelOverlayTitle" class="level-overlay-title"></div>
+        <div id="levelOverlayText" class="level-overlay-text"></div>
+        <button id="levelOverlayAction" class="level-overlay-action" type="button"></button>
+        <div id="levelOverlayHint" class="level-overlay-hint"></div>
+      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

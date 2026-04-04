@@ -6,8 +6,8 @@
       "min": 1,
       "max": 100,
       "step": 0.1,
-      "default": 80,
-      "current": 80
+      "default": 20,
+      "current": 20
     },
     "strafeSpeed": {
       "label": "Strafe Speed",
@@ -18,14 +18,59 @@
       "default": 8,
       "current": 8
     },
+    "collisionRadius": {
+      "label": "Collision Radius",
+      "type": "number",
+      "min": 0,
+      "max": 6,
+      "step": 0.01,
+      "default": 0.6,
+      "current": 0.6
+    },
+    "jumpHeight": {
+      "label": "Jump Height",
+      "type": "number",
+      "min": 0,
+      "max": 12,
+      "step": 0.1,
+      "default": 6,
+      "current": 6
+    },
+    "gravity": {
+      "label": "Gravity",
+      "type": "number",
+      "min": 0.1,
+      "max": 100,
+      "step": 0.1,
+      "default": 80,
+      "current": 80
+    },
+    "scoreSize": {
+      "label": "Score Size",
+      "type": "number",
+      "min": 10,
+      "max": 220,
+      "step": 1,
+      "default": 72,
+      "current": 72
+    },
+    "distanceCoef": {
+      "label": "Distance Coef",
+      "type": "number",
+      "min": 0,
+      "max": 1000,
+      "step": 0.1,
+      "default": 1,
+      "current": 1
+    },
     "xMargin": {
       "label": "X Margin",
       "type": "number",
       "min": 0.2,
       "max": 3,
       "step": 0.05,
-      "default": 0.9,
-      "current": 0.9
+      "default": 2.5,
+      "current": 2.5
     },
     "color": {
       "label": "Color",
@@ -289,8 +334,8 @@
       "min": 2,
       "max": 200,
       "step": 1,
-      "default": 38,
-      "current": 38
+      "default": 20,
+      "current": 20
     },
     "initialSpeed": {
       "label": "Initial Speed",
@@ -347,8 +392,8 @@
       "min": 10,
       "max": 600,
       "step": 1,
-      "default": 200,
-      "current": 200
+      "default": 100,
+      "current": 100
     },
     "spawnDistance": {
       "label": "Spawn Distance",
@@ -356,8 +401,8 @@
       "min": 60,
       "max": 700,
       "step": 1,
-      "default": 140,
-      "current": 140
+      "default": 200,
+      "current": 200
     },
     "renderClipDistance": {
       "label": "Render Clip Distance",
@@ -365,8 +410,8 @@
       "min": 30,
       "max": 700,
       "step": 1,
-      "default": 140,
-      "current": 140
+      "default": 200,
+      "current": 200
     },
     "speed": {
       "label": "Speed",
@@ -377,14 +422,23 @@
       "default": 120,
       "current": 120
     },
+    "scale": {
+      "label": "Scale",
+      "type": "number",
+      "min": 0.2,
+      "max": 4,
+      "step": 0.01,
+      "default": 2,
+      "current": 2
+    },
     "lanesPerDirection": {
       "label": "Lanes Per Direction",
       "type": "number",
       "min": 1,
       "max": 4,
       "step": 1,
-      "default": 4,
-      "current": 4
+      "default": 2,
+      "current": 2
     },
     "levelsCount": {
       "label": "Levels Count",
@@ -392,8 +446,8 @@
       "min": 1,
       "max": 8,
       "step": 1,
-      "default": 3,
-      "current": 3
+      "default": 8,
+      "current": 8
     },
     "laneSpacing": {
       "label": "Lane Spacing",
@@ -419,8 +473,8 @@
       "min": 0.5,
       "max": 20,
       "step": 0.1,
-      "default": 8,
-      "current": 8
+      "default": 7,
+      "current": 7
     },
     "glowChance": {
       "label": "Glow Chance",

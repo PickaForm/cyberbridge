@@ -20,6 +20,11 @@ export const gameConfig = {
   player: {
     moveSpeed: 10,
     strafeSpeed: 8,
+    collisionRadius: 0.95,
+    jumpHeight: 2.2,
+    gravity: 18,
+    scoreSize: 72,
+    distanceCoef: 1,
     xMargin: 0.9
   },
   crowd: {
@@ -58,6 +63,7 @@ export const gameConfig = {
     spawnDistance: 260,
     renderClipDistance: 180,
     speed: 13,
+    scale: 1,
     lanesPerDirection: 2,
     levelsCount: 2,
     laneSpacing: 2.1,
