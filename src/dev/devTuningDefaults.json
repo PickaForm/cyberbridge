@@ -392,8 +392,8 @@
       "min": 10,
       "max": 600,
       "step": 1,
-      "default": 100,
-      "current": 100
+      "default": 60,
+      "current": 60
     },
     "spawnDistance": {
       "label": "Spawn Distance",
@@ -419,8 +419,8 @@
       "min": 0.5,
       "max": 200,
       "step": 0.1,
-      "default": 120,
-      "current": 120
+      "default": 200,
+      "current": 200
     },
     "scale": {
       "label": "Scale",
@@ -437,8 +437,8 @@
       "min": 1,
       "max": 4,
       "step": 1,
-      "default": 2,
-      "current": 2
+      "default": 3,
+      "current": 3
     },
     "levelsCount": {
       "label": "Levels Count",
@@ -455,8 +455,8 @@
       "min": 0.8,
       "max": 8,
       "step": 0.1,
-      "default": 3,
-      "current": 3
+      "default": 3.5,
+      "current": 3.5
     },
     "firstLevelHeight": {
       "label": "First Level Height",

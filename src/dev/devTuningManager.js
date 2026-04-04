@@ -56,6 +56,7 @@ export class DevTuningManager {
   saveAndRestart(nextProfile) {
     const normalizedProfile = this._normalizeProfile(nextProfile)
     this.profile = this._alignDefaultValuesWithCurrent(normalizedProfile)
+    this._downloadProfileAsJson(this.profile)
     this._saveProfile()
     window.location.reload()
   }
@@ -148,6 +149,35 @@ export class DevTuningManager {
       this.storage.setItem(DEV_TUNING_STORAGE_KEY, JSON.stringify(profile))
     } catch (error) {
       console.warn("Failed to persist dev tuning profile", error)
+    }
+  }
+
+  /**
+   * Download the full profile as JSON to ease defaults copy/paste.
+   * @param {object} profile
+   * @returns {void}
+   * @private
+   * @ignore
+   */
+  _downloadProfileAsJson(profile) {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return
+    }
+
+    try {
+      const jsonContent = `${JSON.stringify(profile, null, 2)}\n`
+      const fileBlob = new Blob([jsonContent], { type: "application/json;charset=utf-8" })
+      const downloadUrl = URL.createObjectURL(fileBlob)
+      const downloadLink = document.createElement("a")
+      downloadLink.href = downloadUrl
+      downloadLink.download = "devTuningDefaults.generated.json"
+      downloadLink.style.display = "none"
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
+      document.body.removeChild(downloadLink)
+      URL.revokeObjectURL(downloadUrl)
+    } catch (error) {
+      console.warn("Failed to download dev tuning profile", error)
     }
   }
 
