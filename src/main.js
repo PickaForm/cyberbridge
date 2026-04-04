@@ -32,7 +32,7 @@ const GAME_LEVELS = [
     loseOnBoyHitThreshold: 0,
     objectiveText: "Pas taper les filles !",
     loseText: "T'as percuté 10 filles, boulet !",
-    winText: "Bravo, t'as parcouru 1000m sans incident !",
+    winText: "Pas mal, t'as évité d'avoir trop d'accidents !",
     retryText: "Etre plus gentleman",
     nextLevelText: "Continuer"
   },
