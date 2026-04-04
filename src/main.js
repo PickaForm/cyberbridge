@@ -78,7 +78,7 @@ const GAME_LEVELS = [
     targetScore: 100,
     loseOnGirlHitThreshold: 0,
     loseOnBoyHitThreshold: 0,
-    objectiveText: "Visez surtout des mecs. Question de ratio...",
+    objectiveText: "Visez surtout des mecs. Question de ratio...\nMec +10, Fille -10",
     loseText: "Hmmm, pas assez de réflexes. Recalé !",
     winText: "OMG, t'as des réflexes de mouche !",
     retryText: "OK, compris, je vais Use the Force.",
