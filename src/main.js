@@ -47,7 +47,7 @@ const GAME_LEVELS = [
     loseOnGirlHitThreshold: 10,
     loseOnBoyHitThreshold: 0,
     objectiveText: "Choisissez vos cibles !",
-    loseText: "Touché 10 filles ! Ouvre les yeux, les gars c'est les trucs en bleu !",
+    loseText: "Ouvre les yeux, les gars c'est les trucs en bleu !",
     winText: "Sniper attitude, bravo !",
     retryText: "Viser mieux",
     nextLevelText: "Prêts pour un peu de vitesse ?"
