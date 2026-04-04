@@ -264,7 +264,7 @@ class CyberStreet {
     this._setOverlayContent({
       title: `Level ${levelDefinition.id}`,
       text: this._buildLevelObjectiveText(levelDefinition),
-      hint: "Appuyez sur une touche pour demarrer",
+      hint: "Appuyez sur une touche pour démarrer",
       actionLabel: ""
     })
   }
@@ -304,11 +304,11 @@ class CyberStreet {
     const targetChrono = this._getActiveLevelThreshold(levelDefinition.targetChrono)
 
     if (targetBoysHit > 0) {
-      objectiveLines.push(`Garcons a baffer : ${targetBoysHit}`)
+      objectiveLines.push(`Boyz à baffer : ${targetBoysHit}`)
     }
 
     if (targetGirlsHit > 0) {
-      objectiveLines.push(`Girlz a baffer : ${targetGirlsHit}`)
+      objectiveLines.push(`Girlz à baffer : ${targetGirlsHit}`)
     }
 
     if (targetScore > 0) {
@@ -316,7 +316,7 @@ class CyberStreet {
     }
 
     if (targetDistance > 0) {
-      objectiveLines.push(`Parcourez ${this._formatIntegerWithSpacing(targetDistance)}m !`)
+      objectiveLines.push(`Parcours ${this._formatIntegerWithSpacing(targetDistance)}m`)
     }
 
     if (targetChrono > 0) {
