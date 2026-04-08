@@ -21,7 +21,7 @@
   "init": {
     "player": {
       "moveSpeed": 120,
-      "strafeSpeed": 8,
+      "strafeSpeed": 20,
       "collisionRadius": 0.6,
       "jumpHeight": 4,
       "gravity": 40,
