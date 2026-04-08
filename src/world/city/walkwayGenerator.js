@@ -33,6 +33,10 @@ export class WalkwayGenerator {
    * @returns {{xMin: number, xMax: number, zMin: number, zMax: number, yMin: number, yMax: number}}
    */
   build(chunkGroup) {
+    const ground = new THREE.Mesh(this.resources.geometries.ground, this.resources.materials.ground)
+    ground.position.set(0, this._resolveGroundPositionY(), 0)
+    chunkGroup.add(ground)
+
     const walkway = new THREE.Mesh(this.resources.geometries.walkway, this.resources.materials.walkway)
     walkway.position.set(0, 0, 0)
     chunkGroup.add(walkway)
@@ -51,10 +55,19 @@ export class WalkwayGenerator {
   }
 
   /**
+   * Resolve ground mesh center Y from buildings base Y tuning.
+   * @returns {number}
+   */
+  _resolveGroundPositionY() {
+    const groundTopY = getRuntimeTuningNumber("buildings.baseYMin", -110) - 0.03
+    const geometryHeight = Number(this.resources?.geometries?.ground?.parameters?.height)
+    const groundHeight = Number.isFinite(geometryHeight) ? geometryHeight : 0.04
+    return groundTopY - groundHeight * 0.5
+  }
+
+  /**
    * Create the low-height protected zone that must stay open for pedestrians.
    * @returns {{xMin: number, xMax: number, zMin: number, zMax: number, yMin: number, yMax: number}}
-   * @private
-   * @ignore
    */
   _createWalkwayClearanceZone() {
     const halfWidth = gameConfig.world.walkwayWidth * 0.5

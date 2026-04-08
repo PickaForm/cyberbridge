@@ -63,8 +63,6 @@ export class FlyingCarsSystem {
   /**
    * Spawn all initial cars.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _spawnInitialCars() {
     const carCount = Math.max(1, Math.round(gameConfig.flyingCars.maxCars))
@@ -92,20 +90,21 @@ export class FlyingCarsSystem {
    * @param {{index: number, x: number, y: number, direction: number} | undefined} lane
    * @param {object | undefined} appearance
    * @returns {object}
-   * @private
-   * @ignore
    */
   _createCar(instanceIndex, z, lane = undefined, appearance = undefined) {
     const selectedLane = lane ?? this._pickRandomLane()
     const selectedAppearance = appearance ?? this._createCarAppearance()
+    const spawnOffset = this._createLaneSpawnOffset()
     selectedAppearance.direction = selectedLane.direction
     return {
       instanceIndex,
       laneIndex: selectedLane.index,
       direction: selectedLane.direction,
-      x: selectedLane.x,
-      y: selectedLane.y,
+      x: selectedLane.x + spawnOffset.x,
+      y: selectedLane.y + spawnOffset.y,
       z,
+      laneOffsetX: spawnOffset.x,
+      laneOffsetY: spawnOffset.y,
       appearance: selectedAppearance
     }
   }
@@ -113,8 +112,6 @@ export class FlyingCarsSystem {
   /**
    * Build one random appearance profile.
    * @returns {object}
-   * @private
-   * @ignore
    */
   _createCarAppearance() {
     const palette = [
@@ -147,8 +144,6 @@ export class FlyingCarsSystem {
   /**
    * Pick front width ratio where front can be at minimum half rear width.
    * @returns {number}
-   * @private
-   * @ignore
    */
   _pickFrontWidthRatio() {
     const profiledChance = 0.72
@@ -162,8 +157,6 @@ export class FlyingCarsSystem {
   /**
    * Pick front height ratio where front can collapse to a line.
    * @returns {number}
-   * @private
-   * @ignore
    */
   _pickFrontHeightRatio() {
     const profiledChance = 0.72
@@ -179,8 +172,6 @@ export class FlyingCarsSystem {
    * @param {object} car
    * @param {number} deltaTime
    * @returns {void}
-   * @private
-   * @ignore
    */
   _updateCar(car, deltaTime) {
     const speed = Math.max(0, gameConfig.flyingCars.speed)
@@ -192,8 +183,6 @@ export class FlyingCarsSystem {
    * @param {object} car
    * @param {number} playerZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _recycleIfOutOfRange(car, playerZ) {
     const spawnDistance = Math.max(8, gameConfig.flyingCars.spawnDistance)
@@ -206,10 +195,13 @@ export class FlyingCarsSystem {
     const directionShift = dz > 0 ? -1 : 1
 
     const lane = this._pickRandomLane()
+    const spawnOffset = this._createLaneSpawnOffset()
     car.laneIndex = lane.index
     car.direction = lane.direction
-    car.x = lane.x
-    car.y = lane.y
+    car.laneOffsetX = spawnOffset.x
+    car.laneOffsetY = spawnOffset.y
+    car.x = lane.x + car.laneOffsetX
+    car.y = lane.y + car.laneOffsetY
 
     car.appearance = this._createCarAppearance()
     car.appearance.direction = car.direction
@@ -224,6 +216,23 @@ export class FlyingCarsSystem {
   }
 
   /**
+   * Create a subtle random lane offset for more natural traffic rows.
+   * @returns {{x: number, y: number}}
+   */
+  _createLaneSpawnOffset() {
+    const laneSpacing = Math.max(0.9, gameConfig.flyingCars.laneSpacing)
+    const levelSpacing = Math.max(0.5, gameConfig.flyingCars.levelSpacing)
+
+    const lateralOffsetMax = Math.min(0.45, laneSpacing * 0.24)
+    const verticalOffsetMax = Math.min(0.35, levelSpacing * 0.16)
+
+    return {
+      x: (Math.random() * 2 - 1) * lateralOffsetMax,
+      y: (Math.random() * 2 - 1) * verticalOffsetMax
+    }
+  }
+
+  /**
    * Find one free spawn Z in a lane while enforcing spacing constraints.
    * @param {number} laneIndex
    * @param {number} carLengthScale
@@ -231,8 +240,6 @@ export class FlyingCarsSystem {
    * @param {number} zRangeB
    * @param {number | undefined} ignoredInstanceIndex
    * @returns {number}
-   * @private
-   * @ignore
    */
   _findSafeLaneSpawnZ(laneIndex, carLengthScale, zRangeA, zRangeB, ignoredInstanceIndex = undefined) {
     const minZ = Math.min(zRangeA, zRangeB)
@@ -266,8 +273,6 @@ export class FlyingCarsSystem {
    * @param {number} candidateLengthScale
    * @param {number | undefined} ignoredInstanceIndex
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isLaneSpawnSlotFree(laneIndex, candidateZ, candidateLengthScale, ignoredInstanceIndex = undefined) {
     const carScale = this._getCarScale()
@@ -296,8 +301,6 @@ export class FlyingCarsSystem {
    * @param {number} lengthScaleA
    * @param {number} lengthScaleB
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computeSpawnSpacing(lengthScaleA, lengthScaleB) {
     return lengthScaleA * 0.5 + lengthScaleB * 0.5 + FlyingCarsSystem.MIN_SPAWN_GAP
@@ -308,8 +311,6 @@ export class FlyingCarsSystem {
    * @param {object} car
    * @param {THREE.Vector3} playerPosition
    * @returns {void}
-   * @private
-   * @ignore
    */
   _syncCarTransform(car, playerPosition) {
     const clipDistance = Math.max(0, gameConfig.flyingCars.renderClipDistance)
@@ -323,8 +324,6 @@ export class FlyingCarsSystem {
   /**
    * Read global flying car size multiplier from runtime config.
    * @returns {number}
-   * @private
-   * @ignore
    */
   _getCarScale() {
     return Math.max(0.05, gameConfig.flyingCars.scale ?? 1)
@@ -333,14 +332,12 @@ export class FlyingCarsSystem {
   /**
    * Build virtual lanes for each level and direction.
    * @returns {object[]}
-   * @private
-   * @ignore
    */
   _buildVirtualLanes() {
     const laneCountPerDirection = THREE.MathUtils.clamp(Math.round(gameConfig.flyingCars.lanesPerDirection), 1, 4)
     const levelsCount = Math.max(1, Math.round(gameConfig.flyingCars.levelsCount))
     const laneSpacing = Math.max(0.9, gameConfig.flyingCars.laneSpacing)
-    const firstLevelHeight = Math.max(0.5, gameConfig.flyingCars.firstLevelHeight)
+    const firstLevelHeight = gameConfig.flyingCars.firstLevelHeight
     const levelSpacing = Math.max(0.5, gameConfig.flyingCars.levelSpacing)
     const totalLanes = laneCountPerDirection * 2
     const centerOffset = ((totalLanes - 1) * laneSpacing) * 0.5
@@ -376,8 +373,6 @@ export class FlyingCarsSystem {
   /**
    * Pick one random virtual lane.
    * @returns {object}
-   * @private
-   * @ignore
    */
   _pickRandomLane() {
     const randomIndex = Math.floor(Math.random() * this.lanes.length)

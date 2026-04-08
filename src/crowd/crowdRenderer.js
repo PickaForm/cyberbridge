@@ -161,8 +161,6 @@ export class CrowdRenderer {
   /**
    * Build shared crowd material.
    * @returns {THREE.Material}
-   * @private
-   * @ignore
    */
   _createMaterial() {
     return new THREE.MeshBasicMaterial({
@@ -175,8 +173,6 @@ export class CrowdRenderer {
   /**
    * Build shared crowd geometry.
    * @returns {THREE.BufferGeometry}
-   * @private
-   * @ignore
    */
   _createGeometry() {
     const geometry = new THREE.BoxGeometry(0.9, 1.8, 0.9)
@@ -197,8 +193,6 @@ export class CrowdRenderer {
   /**
    * Build eye material.
    * @returns {THREE.Material}
-   * @private
-   * @ignore
    */
   _createEyeMaterial() {
     return new THREE.MeshStandardMaterial({
@@ -216,8 +210,6 @@ export class CrowdRenderer {
   /**
    * Build mouth material.
    * @returns {THREE.Material}
-   * @private
-   * @ignore
    */
   _createMouthMaterial() {
     return new THREE.MeshStandardMaterial({
@@ -232,8 +224,6 @@ export class CrowdRenderer {
   /**
    * Build square eye geometry.
    * @returns {THREE.BufferGeometry}
-   * @private
-   * @ignore
    */
   _createEyeSquareGeometry() {
     return new THREE.BoxGeometry(0.12, 0.12, 0.035)
@@ -242,8 +232,6 @@ export class CrowdRenderer {
   /**
    * Build rectangular eye geometry.
    * @returns {THREE.BufferGeometry}
-   * @private
-   * @ignore
    */
   _createEyeRectangleGeometry() {
     return new THREE.BoxGeometry(0.18, 0.085, 0.035)
@@ -252,8 +240,6 @@ export class CrowdRenderer {
   /**
    * Build round eye geometry.
    * @returns {THREE.BufferGeometry}
-   * @private
-   * @ignore
    */
   _createEyeRoundGeometry() {
     return new THREE.SphereGeometry(0.06, 10, 10)
@@ -262,8 +248,6 @@ export class CrowdRenderer {
   /**
    * Build cross eye geometry.
    * @returns {THREE.BufferGeometry}
-   * @private
-   * @ignore
    */
   _createEyeCrossGeometry() {
     return new THREE.BoxGeometry(0.16, 0.055, 0.035)
@@ -272,8 +256,6 @@ export class CrowdRenderer {
   /**
    * Build neutral mouth geometry.
    * @returns {THREE.BufferGeometry}
-   * @private
-   * @ignore
    */
   _createMouthNeutralGeometry() {
     return new THREE.BoxGeometry(0.27, 0.045, 0.03)
@@ -282,8 +264,6 @@ export class CrowdRenderer {
   /**
    * Build arc mouth geometry.
    * @returns {THREE.BufferGeometry}
-   * @private
-   * @ignore
    */
   _createMouthArcGeometry() {
     return new THREE.TorusGeometry(0.12, 0.02, 6, 16, Math.PI)
@@ -292,8 +272,6 @@ export class CrowdRenderer {
   /**
    * Build instanced mesh used for all agents.
    * @returns {THREE.InstancedMesh}
-   * @private
-   * @ignore
    */
   _createInstanceMesh() {
     const instancedMesh = new THREE.InstancedMesh(this.agentGeometry, this.agentMaterial, this.maxAgents)
@@ -311,8 +289,6 @@ export class CrowdRenderer {
    * Lift too-dark NPC colors so body stays readable.
    * @param {THREE.Color} color
    * @returns {THREE.Color}
-   * @private
-   * @ignore
    */
   _liftDarkColor(color) {
     const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722
@@ -329,8 +305,6 @@ export class CrowdRenderer {
    * @param {THREE.Color} color
    * @param {number} nonGlowLuminosity
    * @returns {THREE.Color}
-   * @private
-   * @ignore
    */
   _buildBaseColor(color, nonGlowLuminosity) {
     const liftedColor = this._liftDarkColor(color)
@@ -345,8 +319,6 @@ export class CrowdRenderer {
    * @param {THREE.BufferGeometry} geometry
    * @param {THREE.Material} material
    * @returns {THREE.InstancedMesh}
-   * @private
-   * @ignore
    */
   _createFaceInstanceMesh(geometry, material) {
     const instancedMesh = new THREE.InstancedMesh(geometry, material, this.maxAgents)
@@ -366,8 +338,6 @@ export class CrowdRenderer {
    * @param {number} rotationY
    * @param {number} rotationZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _syncFaceMatrices(instanceIndex, x, y, z, faceVisible, rotationX = 0, rotationY = 0, rotationZ = 0) {
     if (!faceVisible) {
@@ -430,8 +400,6 @@ export class CrowdRenderer {
    * Hide all eye types for one instance.
    * @param {number} instanceIndex
    * @returns {void}
-   * @private
-   * @ignore
    */
   _hideEyeInstances(instanceIndex) {
     this._hideInstance(this.eyeSquareLeftMesh, instanceIndex)
@@ -448,8 +416,6 @@ export class CrowdRenderer {
    * Hide all mouth types for one instance.
    * @param {number} instanceIndex
    * @returns {void}
-   * @private
-   * @ignore
    */
   _hideMouthInstances(instanceIndex) {
     this._hideInstance(this.mouthHappyMesh, instanceIndex)
@@ -462,8 +428,6 @@ export class CrowdRenderer {
    * @param {THREE.InstancedMesh} mesh
    * @param {number} instanceIndex
    * @returns {void}
-   * @private
-   * @ignore
    */
   _hideInstance(mesh, instanceIndex) {
     this.instanceDummy.position.set(0, -9999, 0)
@@ -489,8 +453,6 @@ export class CrowdRenderer {
    * @param {number} rotationY
    * @param {number} rotationZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _writeEye(eyeShape, side, instanceIndex, originX, originY, originZ, localX, localY, localZ, eyeScale, rotationX, rotationY, rotationZ) {
     const eyePosition = this._transformLocalPointToWorld(originX, originY, originZ, localX, localY, localZ, rotationX, rotationY, rotationZ)
@@ -585,8 +547,6 @@ export class CrowdRenderer {
    * @param {number} rotationY
    * @param {number} rotationZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _writeMouth(
     mood,
@@ -696,8 +656,6 @@ export class CrowdRenderer {
    * @param {number} rotationY
    * @param {number} rotationZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _writeFaceInstance(mesh, instanceIndex, x, y, z, scale, rotZ, scaleX = scale, scaleY = scale, scaleZ = scale, rotationX = 0, rotationY = 0, rotationZ = 0) {
     this.instanceDummy.position.set(x, y, z)
@@ -722,8 +680,6 @@ export class CrowdRenderer {
    * @param {number} rotationY
    * @param {number} rotationZ
    * @returns {THREE.Vector3}
-   * @private
-   * @ignore
    */
   _transformLocalPointToWorld(originX, originY, originZ, localX, localY, localZ, rotationX, rotationY, rotationZ) {
     this.localFaceOffset.set(localX, localY, localZ)

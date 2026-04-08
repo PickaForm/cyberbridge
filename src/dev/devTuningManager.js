@@ -74,8 +74,6 @@ export class DevTuningManager {
   /**
    * Load profile from JSON defaults + local storage current overrides.
    * @returns {object}
-   * @private
-   * @ignore
    */
   _loadProfile() {
     const defaultProfile = this._buildDefaultProfile()
@@ -93,8 +91,6 @@ export class DevTuningManager {
   /**
    * Build immutable baseline profile from JSON defaults.
    * @returns {object}
-   * @private
-   * @ignore
    */
   _buildDefaultProfile() {
     return this._normalizeProfile(tuningDefaults)
@@ -103,8 +99,6 @@ export class DevTuningManager {
   /**
    * Read stored profile if present.
    * @returns {object | null}
-   * @private
-   * @ignore
    */
   _readStoredProfile() {
     if (!this.storage) {
@@ -126,8 +120,6 @@ export class DevTuningManager {
   /**
    * Persist profile to local storage.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _saveProfile() {
     this._saveProfileData(this.profile)
@@ -137,8 +129,6 @@ export class DevTuningManager {
    * Persist provided profile to local storage.
    * @param {object} profile
    * @returns {void}
-   * @private
-   * @ignore
    */
   _saveProfileData(profile) {
     if (!this.storage) {
@@ -156,8 +146,6 @@ export class DevTuningManager {
    * Download the full profile as JSON to ease defaults copy/paste.
    * @param {object} profile
    * @returns {void}
-   * @private
-   * @ignore
    */
   _downloadProfileAsJson(profile) {
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -185,8 +173,6 @@ export class DevTuningManager {
    * Align default reference values with current local profile values.
    * @param {object} profile
    * @returns {object}
-   * @private
-   * @ignore
    */
   _alignDefaultValuesWithCurrent(profile) {
     const profileClone = _cloneValue(profile)
@@ -212,8 +198,6 @@ export class DevTuningManager {
    * Normalize profile structure and clamp values.
    * @param {object} sourceProfile
    * @returns {object}
-   * @private
-   * @ignore
    */
   _normalizeProfile(sourceProfile) {
     const normalizedProfile = {}
@@ -245,8 +229,6 @@ export class DevTuningManager {
    * Convert profile to raw current-value object.
    * @param {object} profile
    * @returns {object}
-   * @private
-   * @ignore
    */
   _extractCurrentValues(profile) {
     const currentValues = {}
@@ -265,8 +247,6 @@ export class DevTuningManager {
    * Apply relevant tuning values into gameConfig.
    * @param {object} currentValues
    * @returns {void}
-   * @private
-   * @ignore
    */
   _applyToGameConfig(currentValues) {
     const playerValues = currentValues.player ?? {}
@@ -278,9 +258,20 @@ export class DevTuningManager {
     gameConfig.player.scoreSize = Math.max(10, _asNumber(playerValues.scoreSize, gameConfig.player.scoreSize))
     gameConfig.player.distanceCoef = Math.max(0, _asNumber(playerValues.distanceCoef, gameConfig.player.distanceCoef))
     gameConfig.player.xMargin = _asNumber(playerValues.xMargin, gameConfig.player.xMargin)
+    gameConfig.player.cameraElasticity = Math.max(
+      0.1,
+      _asNumber(playerValues.cameraElasticity, gameConfig.player.cameraElasticity)
+    )
 
     const crowdValues = currentValues.crowd ?? {}
     gameConfig.crowd.maxAgents = Math.max(1, Math.round(_asNumber(crowdValues.maxAgents, gameConfig.crowd.maxAgents)))
+    gameConfig.crowd.boysSharePercent = Math.min(100, Math.max(0, _asNumber(crowdValues.boysSharePercent, gameConfig.crowd.boysSharePercent)))
+    gameConfig.crowd.spawnLanesPerDirection = _clampInteger(
+      _asNumber(crowdValues.spawnLanesPerDirection, gameConfig.crowd.spawnLanesPerDirection),
+      1,
+      8
+    )
+    gameConfig.crowd.laneSpacing = Math.max(0.2, _asNumber(crowdValues.laneSpacing, gameConfig.crowd.laneSpacing))
     gameConfig.crowd.spawnDistance = _asNumber(crowdValues.spawnDistance, gameConfig.crowd.spawnDistance)
     gameConfig.crowd.minSpeed = _asNumber(crowdValues.minSpeed, gameConfig.crowd.minSpeed)
     gameConfig.crowd.maxSpeed = _asNumber(crowdValues.maxSpeed, gameConfig.crowd.maxSpeed)
@@ -319,7 +310,7 @@ export class DevTuningManager {
     gameConfig.flyingCars.renderClipDistance = _asNumber(flyingCarsValues.renderClipDistance, gameConfig.flyingCars.renderClipDistance)
     gameConfig.flyingCars.speed = _asNumber(flyingCarsValues.speed, gameConfig.flyingCars.speed)
     gameConfig.flyingCars.scale = Math.max(0.05, _asNumber(flyingCarsValues.scale, gameConfig.flyingCars.scale))
-    gameConfig.flyingCars.lanesPerDirection = _clampInteger(_asNumber(flyingCarsValues.lanesPerDirection, gameConfig.flyingCars.lanesPerDirection), 1, 4)
+    gameConfig.flyingCars.lanesPerDirection = _clampInteger(_asNumber(flyingCarsValues.lanesPerDirection, gameConfig.flyingCars.lanesPerDirection), 1, 6)
     gameConfig.flyingCars.levelsCount = Math.max(1, Math.round(_asNumber(flyingCarsValues.levelsCount, gameConfig.flyingCars.levelsCount)))
     gameConfig.flyingCars.laneSpacing = _asNumber(flyingCarsValues.laneSpacing, gameConfig.flyingCars.laneSpacing)
     gameConfig.flyingCars.firstLevelHeight = _asNumber(flyingCarsValues.firstLevelHeight, gameConfig.flyingCars.firstLevelHeight)
@@ -331,6 +322,7 @@ export class DevTuningManager {
     const buildingValues = currentValues.buildings ?? {}
     gameConfig.world.buildingRowsPerSide = Math.max(1, Math.round(_asNumber(buildingValues.rowsPerSide, gameConfig.world.buildingRowsPerSide)))
     gameConfig.world.buildingGapFromWalkway = _asNumber(buildingValues.gapFromWalkway, gameConfig.world.buildingGapFromWalkway)
+    gameConfig.world.walkwayWidth = Math.max(4, _asNumber(buildingValues.walkwayWidth, gameConfig.world.walkwayWidth))
   }
 
   /**
@@ -338,8 +330,6 @@ export class DevTuningManager {
    * @param {unknown} value
    * @param {object} paramSchema
    * @returns {unknown}
-   * @private
-   * @ignore
    */
   _sanitizeValue(value, paramSchema) {
     if (paramSchema.type === "color") {
@@ -362,8 +352,6 @@ export class DevTuningManager {
  * @param {unknown} value
  * @param {number} fallbackValue
  * @returns {number}
- * @private
- * @ignore
  */
 function _asNumber(value, fallbackValue) {
   const numericValue = Number(value)
@@ -379,8 +367,6 @@ function _asNumber(value, fallbackValue) {
  * @param {number} minValue
  * @param {number} maxValue
  * @returns {number}
- * @private
- * @ignore
  */
 function _clampInteger(value, minValue, maxValue) {
   return Math.min(maxValue, Math.max(minValue, Math.round(value)))
@@ -391,8 +377,6 @@ function _clampInteger(value, minValue, maxValue) {
  * @param {unknown} value
  * @param {unknown} fallbackValue
  * @returns {string}
- * @private
- * @ignore
  */
 function _sanitizeColor(value, fallbackValue) {
   const normalizedFallback = _normalizeHex(fallbackValue, "ffffff")
@@ -404,8 +388,6 @@ function _sanitizeColor(value, fallbackValue) {
  * @param {unknown} value
  * @param {string} fallbackValue
  * @returns {string}
- * @private
- * @ignore
  */
 function _normalizeHex(value, fallbackValue) {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -428,8 +410,6 @@ function _normalizeHex(value, fallbackValue) {
  * Deep clone JSON-compatible value.
  * @param {unknown} value
  * @returns {any}
- * @private
- * @ignore
  */
 function _cloneValue(value) {
   return JSON.parse(JSON.stringify(value))

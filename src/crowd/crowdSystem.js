@@ -22,10 +22,12 @@ export class CrowdSystem {
     this.laneMap = new Map()
     this.nextAgentId = 1
     this.stoppedAgentId = null
-    this.laneWidth = gameConfig.world.walkwayWidth / gameConfig.world.laneCount
-    this.walkwayHalfWidth = gameConfig.world.walkwayWidth * 0.5
-    this.npcLaneMin = gameConfig.world.laneCount > 2 ? 1 : 0
-    this.npcLaneMax = gameConfig.world.laneCount > 2 ? gameConfig.world.laneCount - 2 : gameConfig.world.laneCount - 1
+    const laneLayout = this._resolveLaneLayout()
+    this.laneCount = laneLayout.laneCount
+    this.laneSpacing = laneLayout.laneSpacing
+    this.laneCenterOffset = laneLayout.centerOffset
+    this.npcLaneMin = this.laneCount > 2 ? 1 : 0
+    this.npcLaneMax = this.laneCount > 2 ? this.laneCount - 2 : this.laneCount - 1
     this.crowdRenderer = new CrowdRenderer(scene, gameConfig.crowd.maxAgents)
     this.simulationStep = 1 / gameConfig.crowd.simulationHz
     this.simulationAccumulator = 0
@@ -37,7 +39,7 @@ export class CrowdSystem {
     this.nearSimulationDistance = 52
     this.midSimulationDistance = 118
     this.isProximityMoodTriggerEnabled = false
-    this.faceToFaceBoxHalfWidth = this.laneWidth * 0.6
+    this.faceToFaceBoxHalfWidth = this.laneSpacing * 0.6
     this.faceToFaceBoxHalfDepth = 3.4
     this.walkwayTopY = 1.05
     this.npcCollisionRadius = 0.62
@@ -46,6 +48,25 @@ export class CrowdSystem {
     this.onNpcHit = typeof onNpcHit === "function" ? onNpcHit : null
 
     this._spawnInitialAgents()
+  }
+
+  /**
+   * Resolve crowd lane layout from runtime tuning.
+   * @returns {{laneCount: number, laneSpacing: number, centerOffset: number}}
+   */
+  _resolveLaneLayout() {
+    const spawnLanesPerDirection = THREE.MathUtils.clamp(Math.round(gameConfig.crowd.spawnLanesPerDirection), 1, 8)
+    const laneCount = Math.max(2, spawnLanesPerDirection * 2)
+    const maxLaneSpacing = gameConfig.world.walkwayWidth / laneCount
+    const requestedLaneSpacing = Math.max(0.2, gameConfig.crowd.laneSpacing)
+    const laneSpacing = THREE.MathUtils.clamp(requestedLaneSpacing, 0.2, maxLaneSpacing)
+    const centerOffset = ((laneCount - 1) * laneSpacing) * 0.5
+
+    return {
+      laneCount,
+      laneSpacing,
+      centerOffset
+    }
   }
 
   /**
@@ -148,8 +169,6 @@ export class CrowdSystem {
   /**
    * Spawn initial crowd near origin.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _spawnInitialAgents() {
     for (let agentIndex = 0; agentIndex < gameConfig.crowd.maxAgents; agentIndex += 1) {
@@ -175,8 +194,6 @@ export class CrowdSystem {
    * @param {number} z
    * @param {number} instanceIndex
    * @returns {object}
-   * @private
-   * @ignore
    */
   _createAgent(laneIndex, direction, baseSpeed, z, instanceIndex) {
     const id = this.nextAgentId
@@ -236,8 +253,6 @@ export class CrowdSystem {
    * @param {number} playerVelocityZ
    * @param {number} playerFacingZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _simulateStep(simulationDelta, playerPosition, playerVelocityZ, playerFacingZ) {
     this.simulationTime += simulationDelta
@@ -274,8 +289,6 @@ export class CrowdSystem {
    * @param {number} interpolationAlpha
    * @param {THREE.Vector3} playerPosition
    * @returns {void}
-   * @private
-   * @ignore
    */
   _renderInterpolated(interpolationAlpha, playerPosition) {
     const alpha = THREE.MathUtils.clamp(interpolationAlpha, 0, 1)
@@ -293,13 +306,11 @@ export class CrowdSystem {
   /**
    * Recompute lane buckets for local neighborhood checks.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _rebuildLaneMap() {
     this.laneMap.clear()
 
-    for (let laneIndex = 0; laneIndex < gameConfig.world.laneCount; laneIndex += 1) {
+    for (let laneIndex = 0; laneIndex < this.laneCount; laneIndex += 1) {
       this.laneMap.set(laneIndex, [])
     }
 
@@ -323,8 +334,6 @@ export class CrowdSystem {
    * @param {number} playerVelocityZ
    * @param {number} playerFacingZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _updateAgent(agent, simulationDelta, playerPosition, playerVelocityZ, playerFacingZ) {
     if (agent.isHitActive) {
@@ -376,8 +385,6 @@ export class CrowdSystem {
    * @param {number} simulationDelta
    * @param {number} playerZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _updateHitAgent(agent, simulationDelta, playerZ) {
     if (!agent.hitState) {
@@ -409,8 +416,6 @@ export class CrowdSystem {
    * @param {number} playerVelocityZ
    * @param {number} playerFacingZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _resolvePlayerNpcHitCollisionsFromSweep(
     playerStartX,
@@ -439,8 +444,6 @@ export class CrowdSystem {
    * Check if one NPC can be launched by player collision.
    * @param {object} agent
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _canAgentBeHit(agent) {
     return !agent.isHitActive
@@ -458,8 +461,6 @@ export class CrowdSystem {
    * @param {number} agentY
    * @param {number} agentZ
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isPlayerPathCollidingWithAgent(playerStartX, playerStartY, playerStartZ, playerEndX, playerEndY, playerEndZ, agentX, agentY, agentZ) {
     const segmentX = playerEndX - playerStartX
@@ -490,8 +491,6 @@ export class CrowdSystem {
    * @param {number} agentY
    * @param {number} agentZ
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isPointWithinHitRadius(pointX, pointY, pointZ, agentX, agentY, agentZ) {
     const dx = pointX - agentX
@@ -509,8 +508,6 @@ export class CrowdSystem {
    * @param {number} playerVelocityZ
    * @param {number} playerFacingZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _launchHitAgent(agent, playerVelocityZ, playerFacingZ) {
     if (agent.isHitActive) {
@@ -551,8 +548,6 @@ export class CrowdSystem {
    * @param {THREE.Vector3} playerPosition
    * @param {number} playerVelocityZ
    * @returns {object}
-   * @private
-   * @ignore
    */
   _findNearestThreat(agent, playerPosition, playerVelocityZ) {
     const laneAgents = this.laneMap.get(agent.laneIndex)
@@ -612,8 +607,6 @@ export class CrowdSystem {
    * @param {object} agent
    * @param {object} threat
    * @returns {void}
-   * @private
-   * @ignore
    */
   _tryLaneChange(agent, threat) {
     if (agent.laneChangeCooldown > 0) {
@@ -660,8 +653,6 @@ export class CrowdSystem {
    * Get valid adjacent lane indices.
    * @param {object} agent
    * @returns {number[]}
-   * @private
-   * @ignore
    */
   _getAdjacentLanes(agent) {
     const leftLane = agent.laneIndex - 1
@@ -682,8 +673,6 @@ export class CrowdSystem {
    * Choose preferred bypass lane for frontal conflict.
    * @param {object} agent
    * @returns {number}
-   * @private
-   * @ignore
    */
   _getPreferredFrontalLane(agent) {
     const laneDelta = agent.direction > 0 ? 1 : -1
@@ -696,8 +685,6 @@ export class CrowdSystem {
    * @param {object} agent
    * @param {number} laneIndex
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isLaneAvailable(agent, laneIndex) {
     const laneAgents = this.laneMap.get(laneIndex)
@@ -714,8 +701,6 @@ export class CrowdSystem {
    * Compute reaction distance envelope for a given threat.
    * @param {object} threat
    * @returns {number}
-   * @private
-   * @ignore
    */
   _getReactionDistance(threat) {
     const safeDistance = gameConfig.crowd.safeDistance
@@ -736,8 +721,6 @@ export class CrowdSystem {
    * @param {number} playerVelocityZ
    * @param {number} distance
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isRearYieldThreat(agent, playerVelocityZ, distance) {
     const playerDirection = Math.sign(playerVelocityZ)
@@ -760,8 +743,6 @@ export class CrowdSystem {
    * @param {number} playerZ
    * @param {number} deltaTime
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computePlayerVelocityZ(playerZ, deltaTime) {
     return this._computePlayerVelocityAxis(playerZ, this.lastPlayerZ, deltaTime)
@@ -773,8 +754,6 @@ export class CrowdSystem {
    * @param {number | null} previousAxis
    * @param {number} deltaTime
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computePlayerVelocityAxis(currentAxis, previousAxis, deltaTime) {
     if (previousAxis === null || deltaTime <= 0) {
@@ -789,8 +768,6 @@ export class CrowdSystem {
    * @param {object} agent
    * @param {number} proposedZ
    * @returns {number}
-   * @private
-   * @ignore
    */
   _limitForwardMotion(agent, proposedZ) {
     const laneAgents = this.laneMap.get(agent.laneIndex)
@@ -834,8 +811,6 @@ export class CrowdSystem {
    * @param {number} laneIndex
    * @param {object} threat
    * @returns {number}
-   * @private
-   * @ignore
    */
   _laneRiskScore(agent, laneIndex, threat) {
     const density = this._laneLocalDensity(laneIndex, agent.z)
@@ -853,8 +828,6 @@ export class CrowdSystem {
    * @param {number} direction
    * @param {number} z
    * @returns {number}
-   * @private
-   * @ignore
    */
   _countOppositeDirectionNeighbors(laneIndex, direction, z) {
     const laneAgents = this.laneMap.get(laneIndex)
@@ -875,8 +848,6 @@ export class CrowdSystem {
    * @param {number} laneIndex
    * @param {number} z
    * @returns {number}
-   * @private
-   * @ignore
    */
   _laneLocalDensity(laneIndex, z) {
     const laneAgents = this.laneMap.get(laneIndex)
@@ -894,8 +865,6 @@ export class CrowdSystem {
    * @param {object} agent
    * @param {number} playerZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _recycleIfOutOfRange(agent, playerZ) {
     if (agent.isHitActive) {
@@ -917,8 +886,6 @@ export class CrowdSystem {
    * @param {object} agent
    * @param {number} playerZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _resetAgentAfterHit(agent, playerZ) {
     const directionShift = Math.random() > 0.5 ? 1 : -1
@@ -931,8 +898,6 @@ export class CrowdSystem {
    * @param {number} playerZ
    * @param {number} directionShift
    * @returns {void}
-   * @private
-   * @ignore
    */
   _respawnAgent(agent, playerZ, directionShift) {
     if (this.stoppedAgentId === agent.id) {
@@ -991,8 +956,6 @@ export class CrowdSystem {
    * @param {number} playerVelocityZ
    * @param {number} playerFacingZ
    * @returns {void}
-   * @private
-   * @ignore
    */
   _updateAgentMoodFromPlayerProximity(agent, playerPosition, playerVelocityZ, playerFacingZ) {
     const shouldUseHappyMood = this._isFaceToFaceWithPlayer(agent, playerPosition, playerVelocityZ, playerFacingZ)
@@ -1007,8 +970,6 @@ export class CrowdSystem {
    * @param {number} playerVelocityZ
    * @param {number} playerFacingZ
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isFaceToFaceWithPlayer(agent, playerPosition, playerVelocityZ, playerFacingZ) {
     let playerDirection = Math.sign(playerFacingZ)
@@ -1033,8 +994,6 @@ export class CrowdSystem {
    * @param {object} agent
    * @param {string} targetMood
    * @returns {void}
-   * @private
-   * @ignore
    */
   _setAgentMood(agent, targetMood) {
     if (agent.mood === targetMood) {
@@ -1052,8 +1011,6 @@ export class CrowdSystem {
    * Get renderer vertical mouth offset used by one mood.
    * @param {string} mood
    * @returns {number}
-   * @private
-   * @ignore
    */
   _getMouthMoodYOffset(mood) {
     if (mood === "sad") {
@@ -1071,8 +1028,6 @@ export class CrowdSystem {
    * Build one randomized speed profile for a crowd agent.
    * @param {number} baseSpeed
    * @returns {object}
-   * @private
-   * @ignore
    */
   _createSpeedProfile(baseSpeed) {
     const amplitudeScale = 0.65 + Math.random() * 0.55
@@ -1094,8 +1049,6 @@ export class CrowdSystem {
    * Compute animated desired speed for one agent.
    * @param {object} agent
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computeAgentDesiredSpeed(agent) {
     const wave = Math.sin(this.simulationTime * agent.speedVariationFrequency + agent.speedVariationPhase)
@@ -1107,8 +1060,6 @@ export class CrowdSystem {
   /**
    * Pick a random baseline walking speed.
    * @returns {number}
-   * @private
-   * @ignore
    */
   _getRandomBaseSpeed() {
     const minSpeed = gameConfig.crowd.minSpeed
@@ -1126,8 +1077,6 @@ export class CrowdSystem {
    * @param {number} renderRotationY
    * @param {number} renderRotationZ
    * @returns {void}
-   * @private
-   * @ignore
   */
   _syncAgentTransform(
     agent,
@@ -1163,8 +1112,6 @@ export class CrowdSystem {
   /**
    * Build one random hit spin angular speed around y axis.
    * @returns {number}
-   * @private
-   * @ignore
    */
   _getHitSpinVelocityY() {
     const baseSpinSpeedDeg = Math.max(0, gameConfig.hit.hitSpinSpeedDeg)
@@ -1176,8 +1123,6 @@ export class CrowdSystem {
    * Sync one agent facial appearance to the renderer.
    * @param {object} agent
    * @returns {void}
-   * @private
-   * @ignore
    */
   _syncAgentAppearance(agent) {
     this.crowdRenderer.setAgentAppearance(agent.instanceIndex, {
@@ -1199,8 +1144,6 @@ export class CrowdSystem {
    * Sync one agent body color variant to renderer.
    * @param {object} agent
    * @returns {void}
-   * @private
-   * @ignore
    */
   _syncAgentBodyColor(agent) {
     this.crowdRenderer.setAgentBodyVariant(agent.instanceIndex, agent.bodyVariant)
@@ -1210,33 +1153,25 @@ export class CrowdSystem {
    * Convert lane index to world x.
    * @param {number} laneIndex
    * @returns {number}
-   * @private
-   * @ignore
    */
   _laneToX(laneIndex) {
-    const leftEdge = -this.walkwayHalfWidth
-    return leftEdge + this.laneWidth * (laneIndex + 0.5)
+    return laneIndex * this.laneSpacing - this.laneCenterOffset
   }
 
   /**
    * Convert world x to lane index.
    * @param {number} x
    * @returns {number}
-   * @private
-   * @ignore
    */
   _xToLane(x) {
-    const normalized = (x + this.walkwayHalfWidth) / gameConfig.world.walkwayWidth
-    const laneIndex = Math.floor(normalized * gameConfig.world.laneCount)
-    return THREE.MathUtils.clamp(laneIndex, 0, gameConfig.world.laneCount - 1)
+    const laneIndex = Math.round((x + this.laneCenterOffset) / this.laneSpacing)
+    return THREE.MathUtils.clamp(laneIndex, 0, this.laneCount - 1)
   }
 
   /**
    * Check if one lane is allowed for NPC positions.
    * @param {number} laneIndex
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isNpcLaneAllowed(laneIndex) {
     return laneIndex >= this.npcLaneMin && laneIndex <= this.npcLaneMax
@@ -1245,8 +1180,6 @@ export class CrowdSystem {
   /**
    * Pick one random lane index within NPC allowed range.
    * @returns {number}
-   * @private
-   * @ignore
    */
   _randomNpcLaneIndex() {
     const laneSpan = this.npcLaneMax - this.npcLaneMin + 1
@@ -1260,8 +1193,6 @@ export class CrowdSystem {
   /**
    * Create random face profile for one NPC mood and eyes.
    * @returns {object}
-   * @private
-   * @ignore
    */
   _createFaceProfile() {
     const moodRoll = Math.random()
@@ -1303,8 +1234,6 @@ export class CrowdSystem {
    * @param {object} agent
    * @param {number} distanceToPlayer
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _computeFaceLodVisibility(agent, distanceToPlayer) {
     if (agent.faceLodVisible) {
@@ -1324,8 +1253,6 @@ export class CrowdSystem {
   /**
    * Pick one eye neon color.
    * @returns {number}
-   * @private
-   * @ignore
    */
   _pickEyeColor() {
     const eyePalette = [
@@ -1340,13 +1267,18 @@ export class CrowdSystem {
   }
 
   /**
-   * Pick body color variant with 50/50 distribution.
+   * Pick body color variant from runtime boys/girls distribution.
    * @returns {"blue" | "pink"}
-   * @private
-   * @ignore
    */
   _pickBodyColorVariant() {
-    return Math.random() < 0.5 ? "blue" : "pink"
+    const rawBoysSharePercent = Number(gameConfig.crowd.boysSharePercent)
+    const boysSharePercent = THREE.MathUtils.clamp(
+      Number.isFinite(rawBoysSharePercent) ? rawBoysSharePercent : 50,
+      0,
+      100
+    )
+    const boysShareRatio = boysSharePercent / 100
+    return Math.random() < boysShareRatio ? "blue" : "pink"
   }
 
   /**
@@ -1355,8 +1287,6 @@ export class CrowdSystem {
    * @param {number} simulationDelta
    * @param {THREE.Vector3} playerPosition
    * @returns {number}
-   * @private
-   * @ignore
    */
   _consumeAgentSimulationDelta(agent, simulationDelta, playerPosition) {
     const distanceToPlayer = Math.abs(agent.z - playerPosition.z) + Math.abs(agent.x - playerPosition.x) * 0.25
@@ -1381,8 +1311,6 @@ export class CrowdSystem {
    * Compute simulation frequency multiplier for one distance bucket.
    * @param {number} distanceToPlayer
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computeSimulationLodStepMultiplier(distanceToPlayer) {
     if (distanceToPlayer < this.nearSimulationDistance) {
@@ -1400,8 +1328,6 @@ export class CrowdSystem {
    * Find one agent by instance index.
    * @param {number} instanceIndex
    * @returns {object | null}
-   * @private
-   * @ignore
    */
   _getAgentByInstanceIndex(instanceIndex) {
     for (const agent of this.agents) {
@@ -1417,8 +1343,6 @@ export class CrowdSystem {
    * Find one agent by id.
    * @param {number} agentId
    * @returns {object | null}
-   * @private
-   * @ignore
    */
   _getAgentById(agentId) {
     for (const agent of this.agents) {

@@ -127,8 +127,6 @@ export class StandsGenerator {
   /**
    * Resolve stepped stand settings from runtime tuning.
    * @returns {{stepCountMin: number, stepCountMax: number, growRatio: number, inverseChance: number, growthChance: number}}
-   * @private
-   * @ignore
    */
   _resolveStandSteppedSettings() {
     const stepCountMin = Math.round(getRuntimeTuningNumber("stands.stepCountMin", 1))
@@ -165,8 +163,6 @@ export class StandsGenerator {
    * @param {THREE.Material} standMaterial
    * @param {{stepCountMin: number, stepCountMax: number, growRatio: number, inverseChance: number, growthChance: number}} steppedSettings
    * @returns {Array<{positionX: number, positionY: number, positionZ: number, width: number, height: number, length: number}>}
-   * @private
-   * @ignore
    */
   _buildStandSteppedBody(
     chunkGroup,
@@ -235,8 +231,6 @@ export class StandsGenerator {
    * @param {number} size
    * @param {number} baseSize
    * @returns {number}
-   * @private
-   * @ignore
    */
   _clampStandStepSize(size, baseSize) {
     const minSize = baseSize * 0.5
@@ -250,8 +244,6 @@ export class StandsGenerator {
    * @param {number} minStepCount
    * @param {number} maxStepCount
    * @returns {number}
-   * @private
-   * @ignore
    */
   _pickStandStepCount(rng, minStepCount, maxStepCount) {
     if (minStepCount >= maxStepCount) {
@@ -265,8 +257,6 @@ export class StandsGenerator {
    * Pick one shop style for stand color variation.
    * @param {() => number} rng
    * @returns {{id: string, material: THREE.Material, roofMaterial?: THREE.Material}}
-   * @private
-   * @ignore
    */
   _pickStandShop(rng) {
     const standShops = this.resources.palettes.standShops
@@ -293,8 +283,6 @@ export class StandsGenerator {
    * @param {number} npcWidth
    * @param {number} walkwayTopY
    * @returns {{z: number, width: number, y: number, height: number}}
-   * @private
-   * @ignore
    */
   _addStandDoor(chunkGroup, rng, standPosition, side, standWidth, standHeight, standLength, npcWidth, walkwayTopY) {
     const door = new THREE.Mesh(this.resources.geometries.stand, this.resources.materials.standDoor)
@@ -338,8 +326,6 @@ export class StandsGenerator {
    * @param {number} npcWidth
    * @param {THREE.Material} roofMaterial
    * @returns {void}
-   * @private
-   * @ignore
    */
   _addStandRoof(chunkGroup, standPosition, standWidth, standHeight, standLength, npcWidth, roofMaterial) {
     const roof = new THREE.Mesh(this.resources.geometries.stand, roofMaterial ?? this.resources.materials.standDoor)
@@ -367,8 +353,6 @@ export class StandsGenerator {
    * @param {THREE.Material} windowMaterial
    * @param {{z: number, width: number, y: number, height: number} | null} doorInfo
    * @returns {void}
-   * @private
-   * @ignore
    */
   _addStandWindows(chunkGroup, rng, standPosition, side, standWidth, standHeight, standLength, npcWidth, windowMaterial, doorInfo) {
     const requestedWindowCount = 1 + Math.floor(rng() * 3)

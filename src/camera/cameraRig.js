@@ -41,13 +41,14 @@ export class CameraRig {
   update(deltaTime) {
     const targetPosition = new THREE.Vector3()
     this.target.getWorldPosition(targetPosition)
-    targetPosition.y += 1.5
+    targetPosition.y += gameConfig.camera.targetHeightOffset
 
     const offset = new THREE.Vector3()
     offset.setFromSphericalCoords(this.state.distance, this.state.pitch, this.state.yaw)
     const desiredPosition = targetPosition.clone().add(offset)
 
-    this.camera.position.lerp(desiredPosition, Math.min(1, deltaTime * 8))
+    const cameraElasticity = Math.max(0.1, Number(gameConfig.player.cameraElasticity) || 8)
+    this.camera.position.lerp(desiredPosition, Math.min(1, deltaTime * cameraElasticity))
     this.camera.lookAt(targetPosition)
   }
 
@@ -70,8 +71,6 @@ export class CameraRig {
   /**
    * Bind methods to class scope.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _bindHandlers() {
     this._onContextMenu = this._onContextMenu.bind(this)
@@ -87,8 +86,6 @@ export class CameraRig {
   /**
    * Register pointer events.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _bindEvents() {
     this.inputElement.addEventListener("contextmenu", this._onContextMenu)
@@ -106,8 +103,6 @@ export class CameraRig {
    * Prevent default context menu on right click.
    * @param {MouseEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onContextMenu(event) {
     event.preventDefault()
@@ -117,8 +112,6 @@ export class CameraRig {
    * Start orbit drag.
    * @param {MouseEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onMouseDown(event) {
     if (event.button !== 0) {
@@ -133,8 +126,6 @@ export class CameraRig {
    * Update orbit drag.
    * @param {MouseEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onMouseMove(event) {
     if (!this.isRightDragging) {
@@ -150,8 +141,6 @@ export class CameraRig {
   /**
    * Stop orbit drag.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onMouseUp() {
     this.isRightDragging = false
@@ -161,8 +150,6 @@ export class CameraRig {
    * Zoom camera with mouse wheel.
    * @param {WheelEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onWheel(event) {
     event.preventDefault()
@@ -177,8 +164,6 @@ export class CameraRig {
    * Capture right-side touch for camera orbit.
    * @param {TouchEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onTouchStart(event) {
     if (event.touches.length === 2) {
@@ -207,8 +192,6 @@ export class CameraRig {
    * Handle touch orbit and pinch zoom.
    * @param {TouchEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onTouchMove(event) {
     if (event.touches.length === 2) {
@@ -246,8 +229,6 @@ export class CameraRig {
    * Release active touch pointer.
    * @param {TouchEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onTouchEnd(event) {
     for (const touch of event.changedTouches) {
@@ -262,12 +243,10 @@ export class CameraRig {
    * @param {number} dx
    * @param {number} dy
    * @returns {void}
-   * @private
-   * @ignore
    */
   _applyOrbitDelta(dx, dy) {
     this.state.yaw -= dx * 0.0055
-    this.state.pitch = THREE.MathUtils.clamp(this.state.pitch - dy * 0.004, 0.15, 1.35)
+    this.state.pitch = THREE.MathUtils.clamp(this.state.pitch - dy * 0.004, 0.15, 1.52)
   }
 
   /**
@@ -275,8 +254,6 @@ export class CameraRig {
    * @param {Touch} touchA
    * @param {Touch} touchB
    * @returns {number}
-   * @private
-   * @ignore
    */
   _distance2D(touchA, touchB) {
     const dx = touchA.clientX - touchB.clientX

@@ -145,8 +145,6 @@ export class FlyingCarsRenderer {
   /**
    * Build shared car geometry.
    * @returns {THREE.BufferGeometry}
-   * @private
-   * @ignore
    */
   _createCarGeometry() {
     const geometry = new THREE.BoxGeometry(1, 1, 1)
@@ -167,8 +165,6 @@ export class FlyingCarsRenderer {
   /**
    * Build material for non-glow cars.
    * @returns {THREE.Material}
-   * @private
-   * @ignore
    */
   _createNormalMaterial() {
     const material = new THREE.MeshBasicMaterial({
@@ -183,8 +179,6 @@ export class FlyingCarsRenderer {
   /**
    * Build material for glow cars.
    * @returns {THREE.Material}
-   * @private
-   * @ignore
    */
   _createGlowMaterial() {
     const material = new THREE.MeshBasicMaterial({
@@ -204,8 +198,6 @@ export class FlyingCarsRenderer {
    * Build one instanced mesh for cars.
    * @param {THREE.Material} material
    * @returns {THREE.InstancedMesh}
-   * @private
-   * @ignore
    */
   _createInstanceMesh(material) {
     const instancedMesh = new THREE.InstancedMesh(this.carGeometry, material, this.maxCars)
@@ -223,8 +215,6 @@ export class FlyingCarsRenderer {
    * @param {THREE.InstancedMesh} mesh
    * @param {number} instanceIndex
    * @returns {void}
-   * @private
-   * @ignore
    */
   _hideInstance(mesh, instanceIndex) {
     this.instanceDummy.position.set(0, -9999, 0)
@@ -246,8 +236,6 @@ export class FlyingCarsRenderer {
    * @param {number} heightScale
    * @param {number} direction
    * @returns {void}
-   * @private
-   * @ignore
    */
   _writeInstance(mesh, instanceIndex, x, y, z, lengthScale, widthScale, heightScale, direction) {
     this.instanceDummy.position.set(x, y, z)
@@ -260,8 +248,6 @@ export class FlyingCarsRenderer {
   /**
    * Initialize default front profile attributes.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _initializeFrontProfileAttributes() {
     for (let index = 0; index < this.maxCars; index += 1) {
@@ -274,8 +260,6 @@ export class FlyingCarsRenderer {
    * Inject per-instance front-face profiling into material shader.
    * @param {THREE.MeshBasicMaterial} material
    * @returns {void}
-   * @private
-   * @ignore
    */
   _injectFrontProfileShader(material) {
     material.onBeforeCompile = (shader) => {
@@ -301,8 +285,6 @@ if (transformed.z > 0.0) {
    * Lift too-dark colors so non-glow cars remain readable at night.
    * @param {THREE.Color} color
    * @returns {THREE.Color}
-   * @private
-   * @ignore
    */
   _liftDarkColor(color) {
     const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722
@@ -318,8 +300,6 @@ if (transformed.z > 0.0) {
    * Build a non-glow color that stays visible without triggering heavy bloom.
    * @param {THREE.Color} color
    * @returns {THREE.Color}
-   * @private
-   * @ignore
    */
   _buildBaseColor(color, nonGlowLuminosity) {
     const liftedColor = this._liftDarkColor(color)

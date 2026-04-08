@@ -246,10 +246,16 @@ canvas {
   backdrop-filter: blur(6px);
 }
 
-.dev-palette-close {
+.dev-palette-top-actions {
   position: absolute;
   top: 8px;
   right: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.dev-palette-top-btn,
+.dev-palette-close {
   width: 22px;
   height: 22px;
   border: 1px solid rgba(120, 210, 230, 0.35);
@@ -262,6 +268,11 @@ canvas {
   cursor: pointer;
 }
 
+.dev-palette-top-btn {
+  font-size: 14px;
+}
+
+.dev-palette-top-btn:hover,
 .dev-palette-close:hover {
   background: rgba(24, 56, 82, 0.8);
 }
@@ -269,35 +280,35 @@ canvas {
 .dev-palette-title {
   font-size: 13px;
   font-weight: 700;
+  margin-right: 92px;
   margin-bottom: 4px;
 }
 
 .dev-palette-hint {
-  margin: 0 0 8px 0;
+  margin: 0 92px 8px 0;
   font-size: 11px;
   color: #9cd7df;
 }
 
 .dev-palette-level-test {
   display: grid;
-  grid-template-columns: 92px 1fr;
+  grid-template-columns: 1fr auto 1fr;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-.dev-palette-level-test-input {
-  width: 100%;
-  background: rgba(2, 9, 16, 0.78);
-  color: #d6fbff;
-  border: 1px solid rgba(100, 195, 224, 0.32);
-  border-radius: 4px;
-  font-size: 11px;
-  padding: 6px;
-  box-sizing: border-box;
-}
-
 .dev-palette-level-test-btn {
   background: rgba(25, 76, 39, 0.42);
+}
+
+.dev-palette-level-current {
+  align-self: center;
+  justify-self: center;
+  min-width: 92px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #d6fbff;
 }
 
 .dev-palette-section {
@@ -322,6 +333,32 @@ canvas {
 }
 
 .dev-palette-section-body {
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.dev-palette-subsection {
+  border: 1px solid rgba(102, 179, 201, 0.2);
+  border-radius: 6px;
+  background: rgba(2, 10, 18, 0.42);
+}
+
+.dev-palette-subsection > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9de8f3;
+}
+
+.dev-palette-subsection > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dev-palette-subsection-body {
   padding: 8px;
   display: grid;
   gap: 8px;
@@ -383,9 +420,21 @@ canvas {
   box-sizing: border-box;
 }
 
+.dev-palette-row > input[type="text"],
+.dev-palette-row > input[type="number"] {
+  width: 100%;
+  background: rgba(2, 9, 16, 0.78);
+  color: #d6fbff;
+  border: 1px solid rgba(100, 195, 224, 0.32);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+}
+
 .dev-palette-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
 }
 

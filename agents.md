@@ -13,7 +13,7 @@
 - Use explicit method names.
 - Use camelCase for variable names.
 - Add a JSDoc header for all methods.
-- Private methods must start with `_` and include `@private` and `@ignore` in JSDoc.
+- Private methods must start with `_`.
 - For internal helper methods/functions in modules/controllers, use private naming with `_`.
 
 ## Readability & Maintainability (mandatory)

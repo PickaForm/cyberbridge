@@ -7,16 +7,25 @@
 export class DevPalette {
   /**
    * @param {object} tuningManager
-   * @param {(profile: object) => void} onLiveProfileChange
-   * @param {(levelId: number) => void} onTestLevelRequest
+   * @param {{onLiveProfileChange?: ((profile: object) => void) | null, onCycleLevelRequest?: ((step: number) => object | void) | null, onLevelDefinitionRequest?: (() => object | null) | null, onSaveLevelRequest?: ((levelDefinition: object, profile: object) => void) | null}} callbacks
    */
-  constructor(tuningManager, onLiveProfileChange = null, onTestLevelRequest = null) {
+  constructor(tuningManager, callbacks = {}) {
+    const {
+      onLiveProfileChange = null,
+      onCycleLevelRequest = null,
+      onLevelDefinitionRequest = null,
+      onSaveLevelRequest = null
+    } = callbacks
     this.tuningManager = tuningManager
     this.onLiveProfileChange = onLiveProfileChange
-    this.onTestLevelRequest = onTestLevelRequest
+    this.onCycleLevelRequest = onCycleLevelRequest
+    this.onLevelDefinitionRequest = onLevelDefinitionRequest
+    this.onSaveLevelRequest = onSaveLevelRequest
     this.profile = tuningManager.getProfileClone()
+    this.levelDefinition = this._normalizeLevelDefinition(this.onLevelDefinitionRequest?.() ?? null)
     this.liveApplyTimeoutId = null
-    this.sectionOrder = ["player", "crowd", "hit", "flyingCars", "buildings", "stands", "clouds", "sky", "sound"]
+    this.gameRulesSectionKey = "gameRules"
+    this.sectionOrder = ["player", "crowd", "hit", "flyingCars", "buildings", "walkway", "stands", "clouds", "world", "sound"]
     this.sectionLabels = {
       player: "player",
       crowd: "crowd",
@@ -24,14 +33,17 @@ export class DevPalette {
       sound: "sound",
       flyingCars: "flying cars",
       buildings: "buildings",
+      walkway: "walkway",
       stands: "stands",
       clouds: "clouds",
-      sky: "sky"
+      world: "world"
     }
     this.sectionStateStorageKey = "cyberlove-dev-palette-sections-v1"
     this.sectionState = this._loadSectionState()
+    this.actionsElement = null
     this.rootElement = this._createRootElement()
     this._renderLevelTestControls()
+    this._renderGameRulesSection()
     this._renderSections()
     this._renderActions()
     document.body.appendChild(this.rootElement)
@@ -54,12 +66,33 @@ export class DevPalette {
   /**
    * Create root palette element.
    * @returns {HTMLElement}
-   * @private
-   * @ignore
    */
   _createRootElement() {
     const rootElement = document.createElement("div")
     rootElement.id = "devPalette"
+
+    const topActionsElement = document.createElement("div")
+    topActionsElement.className = "dev-palette-top-actions"
+
+    const expandAllButton = this._createTopActionButton({
+      className: "dev-palette-expand-all",
+      ariaLabel: "Tout deplier les sections",
+      textContent: "+",
+      onClick: () => {
+        this._toggleAllSections(true)
+      }
+    })
+    topActionsElement.appendChild(expandAllButton)
+
+    const collapseAllButton = this._createTopActionButton({
+      className: "dev-palette-collapse-all",
+      ariaLabel: "Tout replier les sections",
+      textContent: "-",
+      onClick: () => {
+        this._toggleAllSections(false)
+      }
+    })
+    topActionsElement.appendChild(collapseAllButton)
 
     const closeButton = document.createElement("button")
     closeButton.type = "button"
@@ -69,7 +102,8 @@ export class DevPalette {
     closeButton.addEventListener("click", () => {
       rootElement.style.display = "none"
     })
-    rootElement.appendChild(closeButton)
+    topActionsElement.appendChild(closeButton)
+    rootElement.appendChild(topActionsElement)
 
     const titleElement = document.createElement("div")
     titleElement.className = "dev-palette-title"
@@ -87,18 +121,26 @@ export class DevPalette {
   /**
    * Render all expandable sections.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _renderSections() {
     for (const sectionKey of this.sectionOrder) {
-      const sectionData = this.profile[sectionKey]
-      if (!sectionData) {
+      let sectionData = this.profile[sectionKey]
+      let paramSectionKey = sectionKey
+
+      if (sectionKey === "buildings") {
+        sectionData = this._extractBuildingsSectionWithoutWalkway(this.profile.buildings ?? {})
+      } else if (sectionKey === "walkway") {
+        sectionData = this._extractWalkwaySection(this.profile.buildings ?? {})
+        paramSectionKey = "buildings"
+      }
+
+      if (!sectionData || Object.keys(sectionData).length <= 0) {
         continue
       }
 
       const detailsElement = document.createElement("details")
       detailsElement.className = "dev-palette-section"
+      detailsElement.dataset.sectionKey = sectionKey
       detailsElement.open = this._isSectionOpen(sectionKey)
       detailsElement.addEventListener("toggle", () => {
         this.sectionState[sectionKey] = detailsElement.open
@@ -113,7 +155,7 @@ export class DevPalette {
       sectionBodyElement.className = "dev-palette-section-body"
 
       for (const [paramKey, paramSchema] of Object.entries(sectionData)) {
-        sectionBodyElement.appendChild(this._createParamRow(sectionKey, paramKey, paramSchema))
+        sectionBodyElement.appendChild(this._createParamRow(paramSectionKey, paramKey, paramSchema))
       }
 
       detailsElement.appendChild(sectionBodyElement)
@@ -122,10 +164,40 @@ export class DevPalette {
   }
 
   /**
+   * Extract buildings parameters except walkway-prefixed keys.
+   * @param {object} buildingsSection
+   * @returns {object}
+   */
+  _extractBuildingsSectionWithoutWalkway(buildingsSection) {
+    const nextSection = {}
+    for (const [paramKey, paramSchema] of Object.entries(buildingsSection)) {
+      if (paramKey.startsWith("walkway")) {
+        continue
+      }
+      nextSection[paramKey] = paramSchema
+    }
+    return nextSection
+  }
+
+  /**
+   * Extract walkway-prefixed parameters from buildings section.
+   * @param {object} buildingsSection
+   * @returns {object}
+   */
+  _extractWalkwaySection(buildingsSection) {
+    const nextSection = {}
+    for (const [paramKey, paramSchema] of Object.entries(buildingsSection)) {
+      if (!paramKey.startsWith("walkway")) {
+        continue
+      }
+      nextSection[paramKey] = paramSchema
+    }
+    return nextSection
+  }
+
+  /**
    * Render bottom action buttons.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _renderActions() {
     const actionsElement = document.createElement("div")
@@ -147,68 +219,271 @@ export class DevPalette {
       this.tuningManager.resetAndRestart()
     })
 
+    const saveLevelButton = document.createElement("button")
+    saveLevelButton.type = "button"
+    saveLevelButton.className = "dev-palette-btn dev-palette-btn-save"
+    saveLevelButton.textContent = "Save level"
+    saveLevelButton.addEventListener("click", () => {
+      if (!this.onSaveLevelRequest) {
+        return
+      }
+      this.onSaveLevelRequest(this._cloneValue(this.levelDefinition), this.profile)
+    })
+
     actionsElement.appendChild(saveButton)
+    actionsElement.appendChild(saveLevelButton)
     actionsElement.appendChild(resetButton)
+    this.actionsElement = actionsElement
     this.rootElement.appendChild(actionsElement)
   }
 
   /**
    * Render level testing controls at the top of the palette.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _renderLevelTestControls() {
     const levelTestRowElement = document.createElement("div")
     levelTestRowElement.className = "dev-palette-level-test"
 
-    const levelInputElement = document.createElement("input")
-    levelInputElement.type = "number"
-    levelInputElement.className = "dev-palette-level-test-input"
-    levelInputElement.min = "1"
-    levelInputElement.step = "1"
-    levelInputElement.value = "1"
-    levelInputElement.setAttribute("aria-label", "Level id")
-
-    const testButtonElement = document.createElement("button")
-    testButtonElement.type = "button"
-    testButtonElement.className = "dev-palette-btn dev-palette-level-test-btn"
-    testButtonElement.textContent = "Tester le level!"
-    testButtonElement.addEventListener("click", () => {
-      this._submitLevelTest(levelInputElement.value)
+    const previousButtonElement = document.createElement("button")
+    previousButtonElement.type = "button"
+    previousButtonElement.className = "dev-palette-btn dev-palette-level-test-btn"
+    previousButtonElement.textContent = "Level précédent"
+    previousButtonElement.addEventListener("click", () => {
+      this._cycleLevel(-1)
     })
 
-    levelInputElement.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") {
-        return
-      }
-      this._submitLevelTest(levelInputElement.value)
+    const currentLevelElement = document.createElement("div")
+    currentLevelElement.className = "dev-palette-level-current"
+    this.currentLevelLabelElement = currentLevelElement
+    this._renderCurrentLevelLabel()
+
+    const nextButtonElement = document.createElement("button")
+    nextButtonElement.type = "button"
+    nextButtonElement.className = "dev-palette-btn dev-palette-level-test-btn"
+    nextButtonElement.textContent = "Level suivant"
+    nextButtonElement.addEventListener("click", () => {
+      this._cycleLevel(1)
     })
 
-    levelTestRowElement.appendChild(levelInputElement)
-    levelTestRowElement.appendChild(testButtonElement)
+    levelTestRowElement.appendChild(previousButtonElement)
+    levelTestRowElement.appendChild(currentLevelElement)
+    levelTestRowElement.appendChild(nextButtonElement)
     this.rootElement.appendChild(levelTestRowElement)
   }
 
   /**
-   * Validate and forward level test request.
-   * @param {unknown} rawLevelId
+   * Render editable game rules controls.
    * @returns {void}
-   * @private
-   * @ignore
    */
-  _submitLevelTest(rawLevelId) {
-    if (!this.onTestLevelRequest) {
+  _renderGameRulesSection() {
+    const detailsElement = document.createElement("details")
+    detailsElement.className = "dev-palette-section"
+    detailsElement.dataset.sectionKey = this.gameRulesSectionKey
+    detailsElement.open = this._isSectionOpen(this.gameRulesSectionKey)
+    detailsElement.addEventListener("toggle", () => {
+      this.sectionState[this.gameRulesSectionKey] = detailsElement.open
+      this._saveSectionState()
+    })
+
+    const summaryElement = document.createElement("summary")
+    summaryElement.textContent = "game rules"
+    detailsElement.appendChild(summaryElement)
+
+    const sectionBodyElement = document.createElement("div")
+    sectionBodyElement.className = "dev-palette-section-body"
+    detailsElement.appendChild(sectionBodyElement)
+    this.gameRulesBodyElement = sectionBodyElement
+    this._renderGameRulesRows()
+    this.rootElement.appendChild(detailsElement)
+  }
+
+  /**
+   * Build one top-right action button.
+   * @param {{className: string, ariaLabel: string, textContent: string, onClick: (() => void)}} options
+   * @returns {HTMLButtonElement}
+   */
+  _createTopActionButton(options) {
+    const buttonElement = document.createElement("button")
+    buttonElement.type = "button"
+    buttonElement.className = `dev-palette-top-btn ${options.className}`
+    buttonElement.setAttribute("aria-label", options.ariaLabel)
+    buttonElement.textContent = options.textContent
+    buttonElement.addEventListener("click", options.onClick)
+    return buttonElement
+  }
+
+  /**
+   * Expand or collapse all visible palette sections.
+   * @param {boolean} shouldOpen
+   * @returns {void}
+   */
+  _toggleAllSections(shouldOpen) {
+    const sectionElements = this.rootElement.querySelectorAll("details.dev-palette-section")
+    for (const sectionElement of sectionElements) {
+      sectionElement.open = shouldOpen
+
+      const sectionKey = sectionElement.dataset.sectionKey
+      if (!sectionKey || !this.sectionOrder.includes(sectionKey)) {
+        continue
+      }
+      this.sectionState[sectionKey] = shouldOpen
+    }
+    this._saveSectionState()
+  }
+
+  /**
+   * Render game rules rows from current level definition.
+   * @returns {void}
+   */
+  _renderGameRulesRows() {
+    if (!this.gameRulesBodyElement) {
       return
     }
 
-    const numericLevelId = Number(rawLevelId)
-    if (!Number.isFinite(numericLevelId)) {
+    this.gameRulesBodyElement.innerHTML = ""
+
+    this._appendGameRuleNumberRow("id", "id", this.levelDefinition.id)
+    this._appendGameRuleNumberRow("target.distance", "target distance", this.levelDefinition.target.distance)
+    this._appendGameRuleNumberRow("target.chrono", "target chrono (ms)", this.levelDefinition.target.chrono)
+    this._appendGameRuleNumberRow("target.score", "target score", this.levelDefinition.target.score)
+    this._appendGameRuleNumberRow("target.boysHit", "target boys hit", this.levelDefinition.target.boysHit)
+    this._appendGameRuleNumberRow("target.girlsHit", "target girls hit", this.levelDefinition.target.girlsHit)
+    this._appendGameRuleNumberRow("lose.boysHit", "lose boys hit", this.levelDefinition.lose.boysHit)
+    this._appendGameRuleNumberRow("lose.girlsHit", "lose girls hit", this.levelDefinition.lose.girlsHit)
+    this._appendGameRuleTextRow("texts.objective", "objective text", this.levelDefinition.texts.objective)
+    this._appendGameRuleTextRow("texts.win", "win text", this.levelDefinition.texts.win)
+    this._appendGameRuleTextRow("texts.lose", "lose text", this.levelDefinition.texts.lose)
+    this._appendGameRuleTextRow("texts.nextLevel", "next level text", this.levelDefinition.texts.nextLevel)
+    this._appendGameRuleTextRow("texts.retry", "retry text", this.levelDefinition.texts.retry)
+  }
+
+  /**
+   * Append one game rule numeric row.
+   * @param {string} rulePath
+   * @param {string} label
+   * @param {number} value
+   * @returns {void}
+   */
+  _appendGameRuleNumberRow(rulePath, label, value) {
+    const rowElement = document.createElement("div")
+    rowElement.className = "dev-palette-row"
+
+    const labelElement = document.createElement("label")
+    labelElement.className = "dev-palette-label"
+    labelElement.textContent = label
+    rowElement.appendChild(labelElement)
+
+    const inputElement = document.createElement("input")
+    inputElement.type = "number"
+    inputElement.step = "1"
+    inputElement.value = String(value)
+    inputElement.addEventListener("input", () => {
+      const numericValue = Math.max(0, Math.round(Number(inputElement.value) || 0))
+      inputElement.value = String(numericValue)
+      this._setGameRuleValue(rulePath, numericValue)
+    })
+    rowElement.appendChild(inputElement)
+    this.gameRulesBodyElement.appendChild(rowElement)
+  }
+
+  /**
+   * Append one game rule text row.
+   * @param {string} rulePath
+   * @param {string} label
+   * @param {string} value
+   * @returns {void}
+   */
+  _appendGameRuleTextRow(rulePath, label, value) {
+    const rowElement = document.createElement("div")
+    rowElement.className = "dev-palette-row"
+
+    const labelElement = document.createElement("label")
+    labelElement.className = "dev-palette-label"
+    labelElement.textContent = label
+    rowElement.appendChild(labelElement)
+
+    const inputElement = document.createElement("input")
+    inputElement.type = "text"
+    inputElement.value = String(value ?? "")
+    inputElement.addEventListener("input", () => {
+      this._setGameRuleValue(rulePath, inputElement.value)
+    })
+    rowElement.appendChild(inputElement)
+    this.gameRulesBodyElement.appendChild(rowElement)
+  }
+
+  /**
+   * Cycle to previous/next level through callback.
+   * @param {number} step
+   * @returns {void}
+   */
+  _cycleLevel(step) {
+    if (!this.onCycleLevelRequest) {
       return
     }
 
-    const levelId = Math.max(1, Math.round(numericLevelId))
-    this.onTestLevelRequest(levelId)
+    const nextLevelDefinition = this.onCycleLevelRequest(step)
+    if (nextLevelDefinition) {
+      this._syncProfileWithRuntime()
+      this._rerenderParamSectionsFromProfile()
+      this.levelDefinition = this._normalizeLevelDefinition(nextLevelDefinition)
+      this._renderCurrentLevelLabel()
+      this._renderGameRulesRows()
+    }
+  }
+
+  /**
+   * Sync local palette profile with current runtime profile.
+   * @returns {void}
+   */
+  _syncProfileWithRuntime() {
+    this.profile = this.tuningManager.getProfileClone()
+  }
+
+  /**
+   * Re-render parameter sections so controls reflect the current runtime profile.
+   * @returns {void}
+   */
+  _rerenderParamSectionsFromProfile() {
+    this._removeParamSections()
+
+    if (this.actionsElement?.parentElement) {
+      this.actionsElement.parentElement.removeChild(this.actionsElement)
+    }
+
+    this._renderSections()
+
+    if (this.actionsElement) {
+      this.rootElement.appendChild(this.actionsElement)
+    }
+  }
+
+  /**
+   * Remove all parameter sections (excluding game rules).
+   * @returns {void}
+   */
+  _removeParamSections() {
+    const sectionElements = this.rootElement.querySelectorAll("details.dev-palette-section")
+    for (const sectionElement of sectionElements) {
+      const sectionKey = sectionElement.dataset.sectionKey
+      if (!sectionKey || !this.sectionOrder.includes(sectionKey)) {
+        continue
+      }
+
+      sectionElement.remove()
+    }
+  }
+
+  /**
+   * Render the non-editable current level indicator.
+   * @returns {void}
+   */
+  _renderCurrentLevelLabel() {
+    if (!this.currentLevelLabelElement) {
+      return
+    }
+    this.currentLevelLabelElement.textContent = `Level ${this.levelDefinition.id}`
   }
 
   /**
@@ -217,8 +492,6 @@ export class DevPalette {
    * @param {string} paramKey
    * @param {object} paramSchema
    * @returns {HTMLElement}
-   * @private
-   * @ignore
    */
   _createParamRow(sectionKey, paramKey, paramSchema) {
     const rowElement = document.createElement("div")
@@ -256,8 +529,6 @@ export class DevPalette {
    * @param {string} paramKey
    * @param {object} paramSchema
    * @returns {void}
-   * @private
-   * @ignore
    */
   _appendColorControls(container, sectionKey, paramKey, paramSchema) {
     const colorPicker = document.createElement("input")
@@ -297,8 +568,6 @@ export class DevPalette {
    * @param {string} paramKey
    * @param {object} paramSchema
    * @returns {void}
-   * @private
-   * @ignore
    */
   _appendNumberControls(container, sectionKey, paramKey, paramSchema) {
     const sliderInput = document.createElement("input")
@@ -348,8 +617,6 @@ export class DevPalette {
    * @param {string} paramKey
    * @param {object} paramSchema
    * @returns {void}
-   * @private
-   * @ignore
    */
   _appendTextControl(container, sectionKey, paramKey, paramSchema) {
     const textInput = document.createElement("input")
@@ -368,8 +635,6 @@ export class DevPalette {
    * @param {string} paramKey
    * @param {unknown} value
    * @returns {void}
-   * @private
-   * @ignore
    */
   _setParamValue(sectionKey, paramKey, value) {
     const section = this.profile?.[sectionKey]
@@ -382,10 +647,73 @@ export class DevPalette {
   }
 
   /**
+   * Set one game-rule value by dotted path.
+   * @param {string} rulePath
+   * @param {unknown} value
+   * @returns {void}
+   */
+  _setGameRuleValue(rulePath, value) {
+    const pathSegments = rulePath.split(".")
+    let currentObject = this.levelDefinition
+    for (let segmentIndex = 0; segmentIndex < pathSegments.length - 1; segmentIndex += 1) {
+      const segment = pathSegments[segmentIndex]
+      if (!currentObject[segment] || typeof currentObject[segment] !== "object") {
+        currentObject[segment] = {}
+      }
+      currentObject = currentObject[segment]
+    }
+
+    const targetKey = pathSegments[pathSegments.length - 1]
+    currentObject[targetKey] = value
+  }
+
+  /**
+   * Normalize one level definition shape used by game rules editor.
+   * @param {object | null} levelDefinition
+   * @returns {object}
+   */
+  _normalizeLevelDefinition(levelDefinition) {
+    const sourceLevel = levelDefinition ?? {}
+    const sourceTarget = sourceLevel.target ?? {}
+    const sourceLose = sourceLevel.lose ?? {}
+    const sourceTexts = sourceLevel.texts ?? {}
+
+    return {
+      id: Math.max(1, Math.round(Number(sourceLevel.id) || 1)),
+      target: {
+        distance: Math.max(0, Math.round(Number(sourceTarget.distance) || 0)),
+        chrono: Math.max(0, Math.round(Number(sourceTarget.chrono) || 0)),
+        score: Math.max(0, Math.round(Number(sourceTarget.score) || 0)),
+        boysHit: Math.max(0, Math.round(Number(sourceTarget.boysHit) || 0)),
+        girlsHit: Math.max(0, Math.round(Number(sourceTarget.girlsHit) || 0))
+      },
+      lose: {
+        boysHit: Math.max(0, Math.round(Number(sourceLose.boysHit) || 0)),
+        girlsHit: Math.max(0, Math.round(Number(sourceLose.girlsHit) || 0))
+      },
+      texts: {
+        objective: String(sourceTexts.objective ?? ""),
+        win: String(sourceTexts.win ?? ""),
+        lose: String(sourceTexts.lose ?? ""),
+        nextLevel: String(sourceTexts.nextLevel ?? ""),
+        retry: String(sourceTexts.retry ?? "")
+      },
+      init: sourceLevel.init && typeof sourceLevel.init === "object" ? sourceLevel.init : {}
+    }
+  }
+
+  /**
+   * Deep clone JSON-compatible values.
+   * @param {object} value
+   * @returns {object}
+   */
+  _cloneValue(value) {
+    return JSON.parse(JSON.stringify(value))
+  }
+
+  /**
    * Debounce live profile application for smooth slider updates.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _scheduleLiveApply() {
     if (!this.onLiveProfileChange) {
@@ -405,8 +733,6 @@ export class DevPalette {
   /**
    * Read persisted open/closed state for palette sections.
    * @returns {Record<string, boolean>}
-   * @private
-   * @ignore
    */
   _loadSectionState() {
     try {
@@ -426,6 +752,9 @@ export class DevPalette {
           result[sectionKey] = parsedValue[sectionKey]
         }
       }
+      if (typeof parsedValue[this.gameRulesSectionKey] === "boolean") {
+        result[this.gameRulesSectionKey] = parsedValue[this.gameRulesSectionKey]
+      }
 
       return result
     } catch (error) {
@@ -437,8 +766,6 @@ export class DevPalette {
   /**
    * Persist open/closed state for palette sections.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _saveSectionState() {
     try {
@@ -452,12 +779,13 @@ export class DevPalette {
    * Resolve if a section should start opened.
    * @param {string} sectionKey
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isSectionOpen(sectionKey) {
     if (typeof this.sectionState[sectionKey] === "boolean") {
       return this.sectionState[sectionKey]
+    }
+    if (sectionKey === this.gameRulesSectionKey) {
+      return true
     }
     return sectionKey === "player"
   }
@@ -468,8 +796,6 @@ export class DevPalette {
  * @param {unknown} value
  * @param {unknown} fallbackValue
  * @returns {string}
- * @private
- * @ignore
  */
 function _normalizeHex(value, fallbackValue) {
   const fallbackHex = _normalizeRawHex(String(fallbackValue ?? "ffffff"))
@@ -481,8 +807,6 @@ function _normalizeHex(value, fallbackValue) {
  * Normalize raw input to 6-char hex.
  * @param {string} value
  * @returns {string | null}
- * @private
- * @ignore
  */
 function _normalizeRawHex(value) {
   const cleanedHex = value.trim().replace(/^#/, "").toLowerCase()

@@ -10,6 +10,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import { gameConfig } from "../config/gameConfig.js"
+import { getRuntimeTuningColor } from "../config/tuningRuntime.js"
 import { SkyRenderer } from "./skyRenderer.js"
 
 export class RendererApp {
@@ -60,6 +61,7 @@ export class RendererApp {
    */
   applyRuntimeTuning() {
     const skyProfile = this.skyRenderer.applyRuntimeTuning()
+    this._applyRuntimeFogColor()
     this._applyDayNightRenderProfile(skyProfile)
     return skyProfile
   }
@@ -86,8 +88,6 @@ export class RendererApp {
   /**
    * Initialize Three renderer.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _setupRenderer() {
     this.renderer.setSize(window.innerWidth, window.innerHeight)
@@ -102,8 +102,6 @@ export class RendererApp {
   /**
    * Initialize lights and atmosphere.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _setupScene() {
     this.scene.fog = new THREE.FogExp2(gameConfig.render.fogColor, gameConfig.render.fogDensity)
@@ -128,8 +126,6 @@ export class RendererApp {
   /**
    * Initialize bloom post-processing.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _setupPostProcessing() {
     this.composer = new EffectComposer(this.renderer)
@@ -147,8 +143,6 @@ export class RendererApp {
   /**
    * Register browser events.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _setupEvents() {
     window.addEventListener("resize", this._onResize)
@@ -157,8 +151,6 @@ export class RendererApp {
   /**
    * Handle viewport resize.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight
@@ -171,8 +163,6 @@ export class RendererApp {
    * Prevent overexposure at sunrise/day while keeping cyber glow at night.
    * @param {{daylightFactor: number, twilightFactor: number, starVisibility: number} | undefined} skyProfile
    * @returns {void}
-   * @private
-   * @ignore
    */
   _applyDayNightRenderProfile(skyProfile) {
     const daylightFactor = THREE.MathUtils.clamp(skyProfile?.daylightFactor ?? 0, 0, 1)
@@ -194,6 +184,19 @@ export class RendererApp {
       this.mainLight.intensity = 0.58 + nightToDayBlend * 0.26
       this.mainLight.color.setHex(0x8fb4ff).lerp(new THREE.Color(0xd9e7ff), nightToDayBlend)
     }
+  }
+
+  /**
+   * Apply runtime fog color override from dev tuning profile.
+   * @returns {void}
+   */
+  _applyRuntimeFogColor() {
+    const runtimeFogColor = getRuntimeTuningColor("world.fogColor", gameConfig.render.fogColor)
+    if (!this.scene.fog || !("color" in this.scene.fog) || !this.scene.fog.color) {
+      return
+    }
+
+    this.scene.fog.color.setHex(runtimeFogColor)
   }
 
 }

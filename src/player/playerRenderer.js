@@ -68,8 +68,6 @@ export class PlayerRenderer {
   /**
    * Create player placeholder mesh.
    * @returns {THREE.Mesh}
-   * @private
-   * @ignore
    */
   _createMesh() {
     const geometry = new THREE.BoxGeometry(1, 1.8, 1)

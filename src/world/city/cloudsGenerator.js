@@ -49,8 +49,6 @@ export class CloudsGenerator {
    * @param {object} defaults
    * @param {number} chunkZRange
    * @returns {object}
-   * @private
-   * @ignore
    */
   _readLayerOptions(layerPath, defaults, chunkZRange, densityMultiplier = 1, layerWeight = 1, minCount = 0) {
     const countValue = getRuntimeTuningNumber(`${layerPath}Count`, defaults.count)
@@ -79,8 +77,6 @@ export class CloudsGenerator {
    * @param {() => number} rng
    * @param {object} options
    * @returns {void}
-   * @private
-   * @ignore
    */
   _addCloudDiscLayer(chunkGroup, rng, options) {
     const cloudMesh = new THREE.InstancedMesh(options.geometry, options.material, options.count)

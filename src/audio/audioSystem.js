@@ -150,8 +150,6 @@ export class AudioSystem {
   /**
    * Handle the first interaction that allows audio playback.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onUnlockInteraction() {
     if (this._isMusicStarted) {
@@ -167,8 +165,6 @@ export class AudioSystem {
   /**
    * Try to start background music and keep unlock listeners until success.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _startMusicPlaybackWithRetry() {
     this.musicAudio.play()
@@ -187,8 +183,6 @@ export class AudioSystem {
   /**
    * Play one low-latency hit SFX through Web Audio API.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _playBufferedHitSound() {
     const variantIndex = Math.floor(Math.random() * this.hitAudioBuffers.length)
@@ -209,8 +203,6 @@ export class AudioSystem {
   /**
    * Play one fallback hit SFX through HTMLAudio while buffers are not ready.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _playFallbackHitSound() {
     if (this.hitFallbackPool.length === 0) {
@@ -227,8 +219,6 @@ export class AudioSystem {
   /**
    * Queue hit playback to preserve audibility during rapid bursts.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _enqueueHitSoundPlayback() {
     this.pendingHitBurstCount = Math.min(this.hitBurstMaxQueue, this.pendingHitBurstCount + 1)
@@ -242,8 +232,6 @@ export class AudioSystem {
   /**
    * Play queued hit sounds with short spacing to avoid full overlap.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _drainHitSoundQueue() {
     if (this.pendingHitBurstCount <= 0) {
@@ -267,8 +255,6 @@ export class AudioSystem {
   /**
    * Play one hit immediately using buffered or fallback path.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _playSingleHitSoundNow() {
     if (this._isBufferedHitPlaybackReady()) {
@@ -282,8 +268,6 @@ export class AudioSystem {
   /**
    * Check if Web Audio playback can be used right now.
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isBufferedHitPlaybackReady() {
     if (!this.hitAudioContext || this.hitAudioBuffers.length <= 0) {
@@ -303,8 +287,6 @@ export class AudioSystem {
   /**
    * Find fallback audio index that is currently paused, else use round-robin.
    * @returns {number}
-   * @private
-   * @ignore
    */
   _getNextFallbackAudioIndex() {
     if (this.hitFallbackPool.length <= 0) {
@@ -328,8 +310,6 @@ export class AudioSystem {
    * @param {number} volume
    * @param {boolean} loop
    * @returns {HTMLAudioElement}
-   * @private
-   * @ignore
    */
   _createAudio(sourceUrl, volume, loop) {
     const audioInstance = new Audio(sourceUrl)
@@ -345,8 +325,6 @@ export class AudioSystem {
    * @param {number} volume
    * @param {number} poolSize
    * @returns {HTMLAudioElement[]}
-   * @private
-   * @ignore
    */
   _createHitFallbackPool(sourceUrl, volume, poolSize) {
     const safePoolSize = Math.max(1, Math.round(poolSize))
@@ -360,8 +338,6 @@ export class AudioSystem {
   /**
    * Initialize Web Audio context for low-latency hit playback.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _ensureHitAudioContext() {
     if (this.hitAudioContext) {
@@ -385,8 +361,6 @@ export class AudioSystem {
   /**
    * Start asynchronous loading of auto-detected hit audio buffers.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _startHitBuffersLoading() {
     if (!this.hitAudioContext) {
@@ -409,8 +383,6 @@ export class AudioSystem {
   /**
    * Load and decode hit variant files.
    * @returns {Promise<AudioBuffer[]>}
-   * @private
-   * @ignore
    */
   async _loadHitBuffers() {
     await this._startHitAssetsPrewarm()
@@ -444,8 +416,6 @@ export class AudioSystem {
   /**
    * Start prewarm of hit files at startup.
    * @returns {Promise<void>}
-   * @private
-   * @ignore
    */
   async _startHitAssetsPrewarm() {
     if (this.hitAssetsPrewarmPromise) {
@@ -461,8 +431,6 @@ export class AudioSystem {
   /**
    * Resolve hit variant URLs and fetch their binary data.
    * @returns {Promise<void>}
-   * @private
-   * @ignore
    */
   async _prewarmHitAssets() {
     const variantUrls = this.hitSfxUrlsOverride.length > 0 ? this.hitSfxUrlsOverride : await this._detectAutoHitUrls()
@@ -484,8 +452,6 @@ export class AudioSystem {
   /**
    * Detect available slap files using numeric suffix naming.
    * @returns {Promise<string[]>}
-   * @private
-   * @ignore
    */
   async _detectAutoHitUrls() {
     const candidateUrls = []
@@ -507,8 +473,6 @@ export class AudioSystem {
    * Download and decode one audio file into a Web Audio buffer.
    * @param {string} sourceUrl
    * @returns {Promise<AudioBuffer | null>}
-   * @private
-   * @ignore
    */
   async _fetchAndDecodeAudioBuffer(sourceUrl) {
     if (!this.hitAudioContext) {
@@ -532,8 +496,6 @@ export class AudioSystem {
    * Decode one ArrayBuffer into an AudioBuffer.
    * @param {ArrayBuffer} arrayBuffer
    * @returns {Promise<AudioBuffer | null>}
-   * @private
-   * @ignore
    */
   async _decodeAudioArrayBuffer(arrayBuffer) {
     if (!this.hitAudioContext) {
@@ -554,8 +516,6 @@ export class AudioSystem {
  * Clamp volume to browser-accepted bounds.
  * @param {number} volume
  * @returns {number}
- * @private
- * @ignore
  */
 function _clampVolume(volume) {
   return Math.min(1, Math.max(0, Number(volume) || 0))
@@ -565,8 +525,6 @@ function _clampVolume(volume) {
  * Check if one audio asset exists on current host.
  * @param {string} sourceUrl
  * @returns {Promise<boolean>}
- * @private
- * @ignore
  */
 async function _doesAudioAssetExist(sourceUrl) {
   try {
@@ -584,8 +542,6 @@ async function _doesAudioAssetExist(sourceUrl) {
  * Download one audio file as binary buffer.
  * @param {string} sourceUrl
  * @returns {Promise<ArrayBuffer | null>}
- * @private
- * @ignore
  */
 async function _fetchAudioArrayBuffer(sourceUrl) {
   try {

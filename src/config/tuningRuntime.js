@@ -75,8 +75,6 @@ export function getRuntimeTuningColor(path, fallbackHex) {
  * @param {object} source
  * @param {string} path
  * @returns {unknown}
- * @private
- * @ignore
  */
 function _readByPath(source, path) {
   const pathSegments = path.split(".")

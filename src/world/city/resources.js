@@ -52,8 +52,6 @@ export function disposeCityResources(resources) {
 /**
  * Build procedural textures used by city rendering.
  * @returns {Record<string, THREE.Texture>}
- * @private
- * @ignore
  */
 function _createTextures() {
   return {
@@ -64,47 +62,50 @@ function _createTextures() {
 /**
  * Build shared material instances.
  * @returns {Record<string, THREE.Material>}
- * @private
- * @ignore
  */
 function _createMaterials(textures) {
-  return {
+  const walkwayColorHex = getRuntimeTuningColor(
+    "world.walkwayColor",
+    getRuntimeTuningColor("buildings.walkwayColor", 0x98a4b5)
+  )
+  const walkwayColor = new THREE.Color(walkwayColorHex)
+  const walkwayEmissive = walkwayColor.clone().multiplyScalar(0.22).lerp(new THREE.Color(0x10121a), 0.25)
+  const guardrailColor = walkwayColor.clone().lerp(new THREE.Color(0xffffff), 0.16)
+  const guardrailEmissive = walkwayColor.clone().multiplyScalar(1.35)
+  const buildingBaseColorHex = getRuntimeTuningColor(
+    "world.buildingBaseColor",
+    getRuntimeTuningColor("buildings.baseColor", 0x101723)
+  )
+  const buildingBaseColor = new THREE.Color(buildingBaseColorHex)
+  const buildingBaseEmissive = buildingBaseColor.clone().multiplyScalar(0.42).lerp(new THREE.Color(0x060b14), 0.55)
+
+  const materials = {
     walkway: new THREE.MeshStandardMaterial({
-      color: 0x98a4b5,
-      emissive: 0x112236,
+      color: walkwayColor,
+      emissive: walkwayEmissive,
+      emissiveIntensity: 0.72,
       roughness: 0.55,
       metalness: 0.32
     }),
+    ground: new THREE.MeshStandardMaterial({
+      color: getRuntimeTuningColor("world.groundColor", 0x1a2436),
+      emissive: 0x060a11,
+      emissiveIntensity: 0.3,
+      roughness: 0.88,
+      metalness: 0.06
+    }),
     guardrail: new THREE.MeshStandardMaterial({
-      color: 0x173047,
-      emissive: 0x27dfff,
+      color: guardrailColor,
+      emissive: guardrailEmissive,
       emissiveIntensity: 1.2,
       roughness: 0.25,
       metalness: 0.65
     }),
-    buildingDark: new THREE.MeshStandardMaterial({
-      color: 0x101723,
-      emissive: 0x080f18,
+    buildingBase: new THREE.MeshStandardMaterial({
+      color: buildingBaseColor,
+      emissive: buildingBaseEmissive,
       roughness: 0.7,
       metalness: 0.2
-    }),
-    buildingMid: new THREE.MeshStandardMaterial({
-      color: 0x16253a,
-      emissive: 0x0d1522,
-      roughness: 0.62,
-      metalness: 0.22
-    }),
-    buildingWarm: new THREE.MeshStandardMaterial({
-      color: 0x2a2f3f,
-      emissive: 0x121322,
-      roughness: 0.66,
-      metalness: 0.18
-    }),
-    buildingSteel: new THREE.MeshStandardMaterial({
-      color: 0x202a36,
-      emissive: 0x0b1320,
-      roughness: 0.58,
-      metalness: 0.28
     }),
     neonA: new THREE.MeshStandardMaterial({
       color: 0x17d5ff,
@@ -288,17 +289,24 @@ function _createMaterials(textures) {
       metalness: 0.2
     })
   }
+
+  const buildingRandomMaterialCount = 12
+  for (let materialIndex = 0; materialIndex < buildingRandomMaterialCount; materialIndex += 1) {
+    const materialKey = `buildingRandom${String(materialIndex + 1).padStart(2, "0")}`
+    materials[materialKey] = _createRandomBuildingMaterial()
+  }
+
+  return materials
 }
 
 /**
  * Build shared geometry instances.
  * @returns {Record<string, THREE.BufferGeometry>}
- * @private
- * @ignore
  */
 function _createGeometries() {
   return {
     walkway: new THREE.BoxGeometry(gameConfig.world.walkwayWidth, gameConfig.world.walkwayHeight, gameConfig.world.chunkLength),
+    ground: new THREE.BoxGeometry(1200, 0.04, gameConfig.world.chunkLength),
     guardrail: new THREE.BoxGeometry(0.15, 1.1, gameConfig.world.chunkLength),
     building: new THREE.BoxGeometry(1, 1, 1),
     neonStrip: new THREE.BoxGeometry(0.15, 1, 0.18),
@@ -314,13 +322,18 @@ function _createGeometries() {
  * Build color and material palettes.
  * @param {Record<string, THREE.Material>} materials
  * @returns {object}
- * @private
- * @ignore
  */
 function _createPalettes(materials) {
+  const buildingRandomMaterials = Object.entries(materials)
+    .filter(([materialKey]) => materialKey.startsWith("buildingRandom"))
+    .map(([, material]) => material)
+
   return {
     neon: [materials.neonA, materials.neonB, materials.neonC, materials.neonD],
-    building: [materials.buildingDark, materials.buildingMid, materials.buildingWarm, materials.buildingSteel],
+    building: {
+      base: materials.buildingBase,
+      random: buildingRandomMaterials
+    },
     windowBuildingMaterial: [
       materials.windowPanelAmber,
       materials.windowPanelWarm,
@@ -341,11 +354,30 @@ function _createPalettes(materials) {
 }
 
 /**
+ * Create one random dark building material variant.
+ * @returns {THREE.MeshStandardMaterial}
+ */
+function _createRandomBuildingMaterial() {
+  const hue = Math.random()
+  const saturation = 0.16 + Math.random() * 0.52
+  const lightness = 0.1 + Math.random() * 0.25
+  const color = new THREE.Color().setHSL(hue, saturation, lightness)
+  const emissive = color.clone().multiplyScalar(0.52).lerp(new THREE.Color(0x060a12), 0.58)
+  const roughness = 0.52 + Math.random() * 0.25
+  const metalness = 0.14 + Math.random() * 0.2
+
+  return new THREE.MeshStandardMaterial({
+    color,
+    emissive,
+    roughness,
+    metalness
+  })
+}
+
+/**
  * Create a soft cloud alpha texture from canvas.
  * @param {number} size
  * @returns {THREE.Texture}
- * @private
- * @ignore
  */
 function _createCloudTexture(size) {
   const canvas = document.createElement("canvas")

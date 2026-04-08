@@ -25,11 +25,15 @@ export const gameConfig = {
     gravity: 18,
     scoreSize: 72,
     distanceCoef: 1,
-    xMargin: 0.9
+    xMargin: 0.9,
+    cameraElasticity: 8
   },
   crowd: {
     maxAgents: 140,
+    boysSharePercent: 50,
     spawnDistance: 240,
+    spawnLanesPerDirection: 5,
+    laneSpacing: 2.2,
     minSpeed: 1.6,
     maxSpeed: 4.8,
     speedVariationAmplitude: 0.22,
@@ -76,9 +80,10 @@ export const gameConfig = {
   camera: {
     minDistance: 3.5,
     maxDistance: 24,
-    defaultDistance: 8.5,
+    defaultDistance: 6.5,
     yaw: Math.PI,
-    pitch: 1.1
+    pitch: 1.3,
+    targetHeightOffset: 0.9
   },
   render: {
     fogColor: 0x1f3d60,

@@ -7,6 +7,7 @@
  */
 import * as THREE from "three"
 import { gameConfig } from "../config/gameConfig.js"
+import { getRuntimeTuningNumber } from "../config/tuningRuntime.js"
 import { createSeededRandom, deriveSeed } from "../core/deterministicRandom.js"
 import { createCityResources, disposeCityResources } from "./city/resources.js"
 import { WalkwayGenerator } from "./city/walkwayGenerator.js"
@@ -39,9 +40,18 @@ export class ProceduralCity {
     const chunkLength = gameConfig.world.chunkLength
     const playerChunk = Math.floor(playerZ / chunkLength)
     const minChunk = playerChunk - gameConfig.world.visibleChunksBehind
-    const maxChunk = playerChunk + gameConfig.world.visibleChunksAhead
+    const defaultSpawnDistance = gameConfig.world.visibleChunksAhead * chunkLength
+    const defaultRenderClipDistance = gameConfig.world.visibleChunksAhead * chunkLength
+    const spawnDistanceInChunks = this._resolveDistanceInChunks("buildings.spawnDistance", defaultSpawnDistance, chunkLength)
+    const renderClipDistanceInChunks = this._resolveDistanceInChunks(
+      "buildings.renderClipDistance",
+      defaultRenderClipDistance,
+      chunkLength
+    )
+    const spawnMaxChunk = playerChunk + spawnDistanceInChunks
+    const renderClipMaxChunk = playerChunk + Math.min(spawnDistanceInChunks, renderClipDistanceInChunks)
 
-    for (let chunkIndex = minChunk; chunkIndex <= maxChunk; chunkIndex += 1) {
+    for (let chunkIndex = minChunk; chunkIndex <= spawnMaxChunk; chunkIndex += 1) {
       if (!this.chunkMap.has(chunkIndex)) {
         const chunkGroup = this._createChunk(chunkIndex)
         this.chunkMap.set(chunkIndex, chunkGroup)
@@ -50,12 +60,28 @@ export class ProceduralCity {
     }
 
     for (const [chunkIndex, chunkGroup] of this.chunkMap) {
-      if (chunkIndex < minChunk || chunkIndex > maxChunk) {
+      if (chunkIndex < minChunk || chunkIndex > spawnMaxChunk) {
         this._disposeChunkGeometry(chunkGroup)
         this.scene.remove(chunkGroup)
         this.chunkMap.delete(chunkIndex)
+        continue
       }
+
+      chunkGroup.visible = chunkIndex <= renderClipMaxChunk
     }
+  }
+
+  /**
+   * Resolve one distance tuning key into chunk count.
+   * @param {string} tuningKey
+   * @param {number} fallbackDistance
+   * @param {number} chunkLength
+   * @returns {number}
+   */
+  _resolveDistanceInChunks(tuningKey, fallbackDistance, chunkLength) {
+    const rawDistance = getRuntimeTuningNumber(tuningKey, fallbackDistance)
+    const safeDistance = Math.max(0, rawDistance)
+    return Math.max(0, Math.ceil(safeDistance / Math.max(1, chunkLength)))
   }
 
   /**
@@ -102,8 +128,6 @@ export class ProceduralCity {
    * Create one procedural chunk.
    * @param {number} chunkIndex
    * @returns {THREE.Group}
-   * @private
-   * @ignore
    */
   _createChunk(chunkIndex) {
     const chunkGroup = new THREE.Group()
@@ -122,8 +146,6 @@ export class ProceduralCity {
    * Dispose per-chunk dynamic geometry objects.
    * @param {THREE.Group} chunkGroup
    * @returns {void}
-   * @private
-   * @ignore
    */
   _disposeChunkGeometry(chunkGroup) {
     chunkGroup.traverse((node) => {
@@ -140,8 +162,6 @@ export class ProceduralCity {
   /**
    * Dispose shared resources only once.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _disposeSharedResources() {
     if (this.hasDisposedResources) {
@@ -155,56 +175,13 @@ export class ProceduralCity {
   /**
    * Create per-material day/night tint profiles for building bodies.
    * @returns {Array<{material: THREE.Material & {color: THREE.Color, emissive?: THREE.Color, emissiveIntensity?: number}, nightColor: THREE.Color, dayColor: THREE.Color, twilightColor: THREE.Color, nightEmissive: THREE.Color, dayEmissive: THREE.Color, twilightEmissive: THREE.Color, nightEmissiveIntensity: number, dayEmissiveIntensity: number}>}
-   * @private
-   * @ignore
    */
   _createBuildingMaterialProfiles() {
     const materials = this.resources.materials
+    const buildingBodyProfiles = this._createBuildingBodyMaterialProfiles(materials)
+
     return [
-      {
-        material: materials.buildingDark,
-        nightColor: new THREE.Color(0x101723),
-        dayColor: new THREE.Color(0x607b97),
-        twilightColor: new THREE.Color(0x6f5f8e),
-        nightEmissive: new THREE.Color(0x080f18),
-        dayEmissive: new THREE.Color(0x0a1016),
-        twilightEmissive: new THREE.Color(0x20162e),
-        nightEmissiveIntensity: 1,
-        dayEmissiveIntensity: 0.25
-      },
-      {
-        material: materials.buildingMid,
-        nightColor: new THREE.Color(0x16253a),
-        dayColor: new THREE.Color(0x7f9fc1),
-        twilightColor: new THREE.Color(0x8a719d),
-        nightEmissive: new THREE.Color(0x0d1522),
-        dayEmissive: new THREE.Color(0x101722),
-        twilightEmissive: new THREE.Color(0x2a1e3a),
-        nightEmissiveIntensity: 1,
-        dayEmissiveIntensity: 0.28
-      },
-      {
-        material: materials.buildingWarm,
-        nightColor: new THREE.Color(0x2a2f3f),
-        dayColor: new THREE.Color(0x8f99aa),
-        twilightColor: new THREE.Color(0x976f85),
-        nightEmissive: new THREE.Color(0x121322),
-        dayEmissive: new THREE.Color(0x13161e),
-        twilightEmissive: new THREE.Color(0x2f1f33),
-        nightEmissiveIntensity: 1,
-        dayEmissiveIntensity: 0.3
-      },
-      {
-        material: materials.buildingSteel,
-        nightColor: new THREE.Color(0x202a36),
-        dayColor: new THREE.Color(0x7f95aa),
-        twilightColor: new THREE.Color(0x7f6f96),
-        nightEmissive: new THREE.Color(0x0b1320),
-        dayEmissive: new THREE.Color(0x0c131b),
-        twilightEmissive: new THREE.Color(0x24192f),
-        nightEmissiveIntensity: 1,
-        dayEmissiveIntensity: 0.3
-      },
+      ...buildingBodyProfiles,
       {
         material: materials.windowPanelAmber,
         nightColor: new THREE.Color(0xfff2b6),
@@ -261,5 +238,59 @@ export class ProceduralCity {
         dayEmissiveIntensity: 0
       }
     ]
+  }
+
+  /**
+   * Create day/night tint profiles for all building body materials.
+   * @param {Record<string, THREE.Material>} materials
+   * @returns {Array<{material: THREE.Material & {color: THREE.Color, emissive?: THREE.Color, emissiveIntensity?: number}, nightColor: THREE.Color, dayColor: THREE.Color, twilightColor: THREE.Color, nightEmissive: THREE.Color, dayEmissive: THREE.Color, twilightEmissive: THREE.Color, nightEmissiveIntensity: number, dayEmissiveIntensity: number}>}
+   */
+  _createBuildingBodyMaterialProfiles(materials) {
+    const randomBuildingMaterials = Object.entries(materials)
+      .filter(([materialKey, material]) => materialKey.startsWith("buildingRandom") && this._isColorCapableMaterial(material))
+      .map(([, material]) => material)
+    const baseMaterial = this._isColorCapableMaterial(materials.buildingBase) ? materials.buildingBase : null
+    const buildingMaterials = baseMaterial ? [baseMaterial, ...randomBuildingMaterials] : randomBuildingMaterials
+
+    return buildingMaterials.map((material) => {
+      const nightColor = material.color.clone()
+      const dayColor = material.color.clone().lerp(new THREE.Color(0xb7cce0), 0.55)
+      const twilightColor = material.color.clone().lerp(new THREE.Color(0xc78ec2), 0.4)
+      const emissiveColor = this._isColorCapableMaterial(material) && material.emissive
+        ? material.emissive.clone()
+        : new THREE.Color(0x000000)
+      const dayEmissive = emissiveColor.clone().multiplyScalar(0.34).lerp(new THREE.Color(0x0a1016), 0.25)
+      const twilightEmissive = emissiveColor.clone().lerp(new THREE.Color(0x2a1f38), 0.32)
+
+      return {
+        material,
+        nightColor,
+        dayColor,
+        twilightColor,
+        nightEmissive: emissiveColor,
+        dayEmissive,
+        twilightEmissive,
+        nightEmissiveIntensity: this._isNumber(material.emissiveIntensity) ? material.emissiveIntensity : 1,
+        dayEmissiveIntensity: 0.3
+      }
+    })
+  }
+
+  /**
+   * Check whether a material supports color operations.
+   * @param {unknown} material
+   * @returns {material is THREE.Material & {color: THREE.Color, emissive?: THREE.Color, emissiveIntensity?: number}}
+   */
+  _isColorCapableMaterial(material) {
+    return Boolean(material && typeof material === "object" && "color" in material && material.color instanceof THREE.Color)
+  }
+
+  /**
+   * Check whether a value is a finite number.
+   * @param {unknown} value
+   * @returns {boolean}
+   */
+  _isNumber(value) {
+    return Number.isFinite(value)
   }
 }

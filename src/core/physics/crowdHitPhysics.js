@@ -96,8 +96,6 @@ export class CrowdHitPhysics {
  * @param {number} playerFacingZ
  * @param {number} playerVelocityZ
  * @returns {number}
- * @private
- * @ignore
  */
 function _resolveForwardSign(playerFacingZ, playerVelocityZ) {
   const facingSign = Math.sign(playerFacingZ)
@@ -117,8 +115,6 @@ function _resolveForwardSign(playerFacingZ, playerVelocityZ) {
  * Clamp launch angle in degrees.
  * @param {number} launchAngleDeg
  * @returns {number}
- * @private
- * @ignore
  */
 function _clampLaunchAngleDeg(launchAngleDeg) {
   return THREE.MathUtils.clamp(launchAngleDeg, 0, MAX_LAUNCH_ANGLE_DEG)

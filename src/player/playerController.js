@@ -121,8 +121,6 @@ export class PlayerController {
   /**
    * Cache bound event handlers.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _bindHandlers() {
     this._onKeyDown = this._onKeyDown.bind(this)
@@ -135,8 +133,6 @@ export class PlayerController {
   /**
    * Register keyboard and touch events.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _bindEvents() {
     window.addEventListener("keydown", this._onKeyDown)
@@ -150,8 +146,6 @@ export class PlayerController {
   /**
    * Build desired movement from keyboard and touch.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _updateInputState() {
     const keyboardForward = Number(this._isControlPressed(["ArrowUp"], ["z"])) - Number(this._isControlPressed(["ArrowDown"], ["s"]))
@@ -175,8 +169,6 @@ export class PlayerController {
    * @param {string[]} codes
    * @param {string[]} keys
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isControlPressed(codes, keys) {
     const hasCode = codes.some((code) => this.keys.get(`code:${code}`))
@@ -188,8 +180,6 @@ export class PlayerController {
    * Handle keyboard press.
    * @param {KeyboardEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onKeyDown(event) {
     this.keys.set(`code:${event.code}`, true)
@@ -205,8 +195,6 @@ export class PlayerController {
    * Handle keyboard release.
    * @param {KeyboardEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onKeyUp(event) {
     this.keys.set(`code:${event.code}`, false)
@@ -216,8 +204,6 @@ export class PlayerController {
   /**
    * Start a jump from the ground using configurable target height and gravity.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _tryStartJump() {
     if (!this.isJumpRequested) {
@@ -238,8 +224,6 @@ export class PlayerController {
    * Integrate vertical velocity with gravity and clamp back to ground.
    * @param {number} deltaTime
    * @returns {void}
-   * @private
-   * @ignore
    */
   _updateJumpPhysics(deltaTime) {
     const gravity = Math.max(0.01, gameConfig.player.gravity)
@@ -255,8 +239,6 @@ export class PlayerController {
   /**
    * Check if player currently touches the walkway.
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isOnGround() {
     return this.position.y <= this.baseY + 0.0001
@@ -266,8 +248,6 @@ export class PlayerController {
    * Start left-side movement touch control.
    * @param {TouchEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onTouchStart(event) {
     const halfWidth = window.innerWidth * 0.5
@@ -292,8 +272,6 @@ export class PlayerController {
    * Update movement touch stick.
    * @param {TouchEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onTouchMove(event) {
     if (this.touchMovePointerId === null) {
@@ -315,8 +293,6 @@ export class PlayerController {
    * Stop movement touch control.
    * @param {TouchEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onTouchEnd(event) {
     if (this.touchMovePointerId === null) {
@@ -338,8 +314,6 @@ export class PlayerController {
   /**
    * Compute movement basis from camera orientation projected on walkway plane.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _updateWalkwayBasisFromCamera() {
     if (!this.camera) {

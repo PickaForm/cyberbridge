@@ -31,8 +31,6 @@ export function createSeededRandom(seed) {
  * Hash builder for string seeds.
  * @param {string} value
  * @returns {() => number}
- * @private
- * @ignore
  */
 function _xmur3(value) {
   let hash = 1779033703 ^ value.length
@@ -52,8 +50,6 @@ function _xmur3(value) {
  * Fast seeded PRNG.
  * @param {number} seed
  * @returns {() => number}
- * @private
- * @ignore
  */
 function _mulberry32(seed) {
   let current = seed >>> 0

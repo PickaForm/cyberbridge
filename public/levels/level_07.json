@@ -1,0 +1,149 @@
+{
+  "id": 7,
+  "target": {
+    "distance": 5000,
+    "chrono": 0,
+    "score": 0,
+    "boysHit": 0,
+    "girlsHit": 0
+  },
+  "lose": {
+    "boysHit": 1,
+    "girlsHit": 1
+  },
+  "texts": {
+    "objective": "Saute mouton ! Ne touche personne sur 5km !",
+    "win": "Sauteur de mouton de l'espace !",
+    "lose": "Saute par dessus les gens, pas sur les gens !",
+    "nextLevel": "OK, et maintenant ?",
+    "retry": "C'est n'importe quoi ce niveau. Relance !"
+  },
+  "init": {
+    "player": {
+      "moveSpeed": 100,
+      "strafeSpeed": 20,
+      "collisionRadius": 0.6,
+      "jumpHeight": 3,
+      "gravity": 60,
+      "scoreSize": 72,
+      "distanceCoef": 1,
+      "xMargin": 2.5,
+      "cameraElasticity": 20,
+      "color": "ffe16e",
+      "emissive": "b66318",
+      "emissiveIntensity": 1.25,
+      "roughness": 0.4,
+      "metalness": 0.35
+    },
+    "crowd": {
+      "maxAgents": 5,
+      "boysSharePercent": 50,
+      "spawnLanesPerDirection": 1,
+      "laneSpacing": 3,
+      "spawnDistance": 100,
+      "renderClipDistance": 200,
+      "minSpeed": 2,
+      "maxSpeed": 20,
+      "speedVariationAmplitude": 0.8,
+      "speedVariationFrequencyMin": 0.25,
+      "speedVariationFrequencyMax": 0.8,
+      "safeDistance": 2,
+      "frontalLookAheadMultiplier": 4,
+      "rearYieldMultiplier": 1.35,
+      "rearYieldSpeedThreshold": 1.05,
+      "laneEnterClearance": 2.25,
+      "minForwardGap": 1.85,
+      "laneChangeCooldown": 0.9,
+      "simulationHz": 10,
+      "maxSimulationStepsPerFrame": 3,
+      "boysColor": "4a9dff",
+      "girlsColor": "ff76d6",
+      "color": "a8c4de",
+      "emissive": "12385f",
+      "roughness": 0.5,
+      "metalness": 0.25
+    },
+    "hit": {
+      "arcHeight": 8,
+      "arcWidth": 63.6,
+      "fallDepth": 20,
+      "initialSpeed": 80,
+      "launchAngleDeg": 85,
+      "hitSpinSpeedDeg": 720
+    },
+    "sound": {
+      "musicVolume": 80,
+      "hitVolume": 100
+    },
+    "flyingCars": {
+      "maxCars": 300,
+      "spawnDistance": 700,
+      "renderClipDistance": 700,
+      "speed": 300,
+      "scale": 4,
+      "lanesPerDirection": 6,
+      "levelsCount": 10,
+      "laneSpacing": 50,
+      "firstLevelHeight": -100,
+      "levelSpacing": 30,
+      "glowChance": 0.5,
+      "nonGlowLuminosity": 2.5,
+      "glowIntensity": 3
+    },
+    "buildings": {
+      "spawnDistance": 1000,
+      "renderClipDistance": 1000,
+      "rowsPerSide": 4,
+      "gapFromWalkway": 100,
+      "walkwayWidth": 8,
+      "walkwayClearanceHeight": 10,
+      "walkwayClearanceSideMargin": 0,
+      "rowSpacing": 100,
+      "widthMin": 15,
+      "widthRange": 50,
+      "depthMin": 15,
+      "depthRange": 50,
+      "heightMin": 115,
+      "heightRange": 115,
+      "minSegmentCount": 2,
+      "maxSegmentCount": 5,
+      "steppedGrowPercent": 10,
+      "steppedInverseChance": 0.5,
+      "baseYMin": -250,
+      "baseYRange": 0,
+      "wrappedStyleChance": 0.05,
+      "wrappedLinesMin": 40,
+      "wrappedLinesMax": 60,
+      "windowFrontLitChance": 0.05,
+      "windowSideLitChance": 0.05
+    },
+    "stands": {
+      "lengthNpcMin": 20,
+      "lengthNpcMax": 60,
+      "stepCountMin": 1,
+      "stepCountMax": 3,
+      "steppedGrowPercent": 20,
+      "steppedInverseChance": 0.5,
+      "stepGrowthChance": 0.5
+    },
+    "clouds": {
+      "mistColor": "4400ff",
+      "mistOpacity": 0.1,
+      "chunkZRangeMultiplier": 0.1,
+      "mistLayerCount": 20,
+      "mistLayerYMin": -260,
+      "mistLayerYMax": -240,
+      "mistLayerSizeMin": 230,
+      "mistLayerSizeMax": 660,
+      "mistLayerXSpan": 190
+    },
+    "world": {
+      "timeOfDay": 0,
+      "walkwayColor": "b61182",
+      "buildingBaseColor": "00e1ff",
+      "buildingBaseColorSharePercent": 96,
+      "fogColor": "160052",
+      "groundColor": "3e848e"
+    }
+  }
+}

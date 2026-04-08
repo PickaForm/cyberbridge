@@ -44,16 +44,24 @@ export class BuildingsGenerator {
     const baseYMin = getRuntimeTuningNumber("buildings.baseYMin", -110)
     const baseYRange = getRuntimeTuningNumber("buildings.baseYRange", 70)
     const wrappedStyleChance = getRuntimeTuningNumber("buildings.wrappedStyleChance", 0.28)
+    const wrappedLinesMin = getRuntimeTuningNumber("buildings.wrappedLinesMin", 12)
+    const wrappedLinesMax = getRuntimeTuningNumber("buildings.wrappedLinesMax", 28)
     const minSegmentCount = getRuntimeTuningNumber("buildings.minSegmentCount", 2)
     const maxSegmentCount = getRuntimeTuningNumber("buildings.maxSegmentCount", 4)
     const steppedGrowPercent = getRuntimeTuningNumber("buildings.steppedGrowPercent", 12)
     const steppedInverseChance = getRuntimeTuningNumber("buildings.steppedInverseChance", 0)
+    const baseColorSharePercent = getRuntimeTuningNumber(
+      "world.buildingBaseColorSharePercent",
+      getRuntimeTuningNumber("buildings.baseColorSharePercent", 70)
+    )
     const steppedSettings = this._resolveSteppedSettings(
       minSegmentCount,
       maxSegmentCount,
       steppedGrowPercent,
       steppedInverseChance
     )
+    const wrappedLineSettings = this._resolveWrappedLineSettings(wrappedLinesMin, wrappedLinesMax)
+    const buildingColorSettings = this._resolveBuildingColorSettings(baseColorSharePercent)
 
     for (let sideIndex = -1; sideIndex <= 1; sideIndex += 2) {
       for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
@@ -67,6 +75,7 @@ export class BuildingsGenerator {
         const posZ = -gameConfig.world.chunkLength * 0.5 + rng() * gameConfig.world.chunkLength
         const buildingStyleRoll = rng()
         const windowMaterial = this._pickWindowBuildingMaterial(rng)
+        const buildingMaterial = this._pickBuildingMaterial(rng, buildingColorSettings)
 
         if (buildingStyleRoll < wrappedStyleChance) {
           this._buildWrappedLineBuilding(
@@ -80,6 +89,8 @@ export class BuildingsGenerator {
             sideIndex,
             baseY,
             rowDetailFactor,
+            buildingMaterial,
+            wrappedLineSettings,
             walkwayClearanceZone
           )
         } else {
@@ -93,6 +104,7 @@ export class BuildingsGenerator {
             totalHeight,
             sideIndex,
             windowMaterial,
+            buildingMaterial,
             baseY,
             rowDetailFactor,
             steppedSettings,
@@ -114,13 +126,12 @@ export class BuildingsGenerator {
    * @param {number} totalHeight
    * @param {number} sideIndex
    * @param {THREE.Material} windowMaterial
+   * @param {THREE.Material} buildingMaterial
    * @param {number} baseY
    * @param {number} rowDetailFactor
    * @param {{segmentCountMin: number, segmentCountMax: number, growRatio: number, inverseChance: number}} steppedSettings
    * @param {{xMin: number, xMax: number, zMin: number, zMax: number, yMin: number, yMax: number} | undefined} walkwayClearanceZone
    * @returns {void}
-   * @private
-   * @ignore
    */
   _buildSteppedBuilding(
     chunkGroup,
@@ -132,6 +143,7 @@ export class BuildingsGenerator {
     totalHeight,
     sideIndex,
     windowMaterial,
+    buildingMaterial,
     baseY,
     rowDetailFactor,
     steppedSettings,
@@ -176,7 +188,7 @@ export class BuildingsGenerator {
       const verticalDetailFactor = this._computeVerticalDetailFactor(segmentPosY, bottomY, totalHeight)
       const segmentDetailFactor = THREE.MathUtils.clamp(rowDetailFactor * verticalDetailFactor, 0.2, 1)
 
-      const segmentMesh = new THREE.Mesh(this.resources.geometries.building, this._pickBuildingMaterial(rng, segmentIndex))
+      const segmentMesh = new THREE.Mesh(this.resources.geometries.building, buildingMaterial)
       segmentMesh.scale.set(width, segmentHeight, depth)
       segmentMesh.position.set(segmentPosX, segmentPosY, segmentPosZ)
       chunkGroup.add(segmentMesh)
@@ -203,8 +215,6 @@ export class BuildingsGenerator {
    * @param {number} growPercent
    * @param {number} inverseChance
    * @returns {{segmentCountMin: number, segmentCountMax: number, growRatio: number, inverseChance: number}}
-   * @private
-   * @ignore
    */
   _resolveSteppedSettings(minSegmentCount, maxSegmentCount, growPercent, inverseChance) {
     const normalizedMinSegmentCount = Math.max(1, Math.round(minSegmentCount))
@@ -221,13 +231,38 @@ export class BuildingsGenerator {
   }
 
   /**
+   * Resolve wrapped-line tuning into safe runtime settings.
+   * @param {number} minLines
+   * @param {number} maxLines
+   * @returns {{minLines: number, maxLines: number}}
+   */
+  _resolveWrappedLineSettings(minLines, maxLines) {
+    const normalizedMinLines = Math.max(1, Math.round(minLines))
+    const normalizedMaxLines = Math.max(normalizedMinLines, Math.round(maxLines))
+    return {
+      minLines: normalizedMinLines,
+      maxLines: normalizedMaxLines
+    }
+  }
+
+  /**
+   * Resolve base-color building share into safe runtime settings.
+   * @param {number} baseColorSharePercent
+   * @returns {{baseChanceRatio: number}}
+   */
+  _resolveBuildingColorSettings(baseColorSharePercent) {
+    const clampedPercent = THREE.MathUtils.clamp(baseColorSharePercent, 0, 100)
+    return {
+      baseChanceRatio: clampedPercent / 100
+    }
+  }
+
+  /**
    * Pick stepped building segment count in inclusive range.
    * @param {() => number} rng
    * @param {number} minSegmentCount
    * @param {number} maxSegmentCount
    * @returns {number}
-   * @private
-   * @ignore
    */
   _pickSegmentCount(rng, minSegmentCount, maxSegmentCount) {
     if (minSegmentCount >= maxSegmentCount) {
@@ -249,12 +284,26 @@ export class BuildingsGenerator {
    * @param {number} sideIndex
    * @param {number} baseY
    * @param {number} rowDetailFactor
+   * @param {THREE.Material} buildingMaterial
+   * @param {{minLines: number, maxLines: number}} wrappedLineSettings
    * @param {{xMin: number, xMax: number, zMin: number, zMax: number, yMin: number, yMax: number} | undefined} walkwayClearanceZone
    * @returns {void}
-   * @private
-   * @ignore
    */
-  _buildWrappedLineBuilding(chunkGroup, rng, posX, posZ, width, depth, height, sideIndex, baseY, rowDetailFactor, walkwayClearanceZone) {
+  _buildWrappedLineBuilding(
+    chunkGroup,
+    rng,
+    posX,
+    posZ,
+    width,
+    depth,
+    height,
+    sideIndex,
+    baseY,
+    rowDetailFactor,
+    buildingMaterial,
+    wrappedLineSettings,
+    walkwayClearanceZone
+  ) {
     const adjustedPosX = this._resolveSegmentXWithWalkwayClearance(
       posX,
       posZ,
@@ -266,12 +315,23 @@ export class BuildingsGenerator {
       walkwayClearanceZone
     )
     const posY = baseY + height * 0.5
-    const building = new THREE.Mesh(this.resources.geometries.building, this._pickBuildingMaterial(rng, 0))
+    const building = new THREE.Mesh(this.resources.geometries.building, buildingMaterial)
     building.scale.set(width, height, depth)
     building.position.set(adjustedPosX, posY, posZ)
     chunkGroup.add(building)
 
-    this._addWrappedPerimeterLines(chunkGroup, rng, adjustedPosX, posY, posZ, width, height, depth, rowDetailFactor)
+    this._addWrappedPerimeterLines(
+      chunkGroup,
+      rng,
+      adjustedPosX,
+      posY,
+      posZ,
+      width,
+      height,
+      depth,
+      rowDetailFactor,
+      wrappedLineSettings
+    )
     this._addSignPanels(chunkGroup, rng, adjustedPosX, posY, posZ, width, height, depth, sideIndex, rowDetailFactor)
     this._addNeonStrips(chunkGroup, rng, adjustedPosX, posY, posZ, width, height, depth, sideIndex, rowDetailFactor)
   }
@@ -287,8 +347,6 @@ export class BuildingsGenerator {
    * @param {number} sideIndex
    * @param {{xMin: number, xMax: number, zMin: number, zMax: number, yMin: number, yMax: number} | undefined} walkwayClearanceZone
    * @returns {number}
-   * @private
-   * @ignore
    */
   _resolveSegmentXWithWalkwayClearance(
     segmentPosX,
@@ -337,8 +395,6 @@ export class BuildingsGenerator {
    * @param {number} segmentMaxZ
    * @param {{xMin: number, xMax: number, zMin: number, zMax: number, yMin: number, yMax: number}} walkwayClearanceZone
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isSegmentBlockedByWalkwayClearance(segmentMinX, segmentMaxX, segmentMinY, segmentMaxY, segmentMinZ, segmentMaxZ, walkwayClearanceZone) {
     const overlapsY = this._rangesOverlap(segmentMinY, segmentMaxY, walkwayClearanceZone.yMin, walkwayClearanceZone.yMax)
@@ -361,8 +417,6 @@ export class BuildingsGenerator {
    * @param {number} sideIndex
    * @param {{xMin: number, xMax: number, zMin: number, zMax: number, yMin: number, yMax: number}} walkwayClearanceZone
    * @returns {number}
-   * @private
-   * @ignore
    */
   _resolveSideAnchoredClearanceX(segmentPosX, segmentWidth, sideIndex, walkwayClearanceZone) {
     const clearancePadding = 0.05 + BuildingsGenerator.WALKWAY_FACADE_PROTRUSION_PADDING
@@ -383,8 +437,6 @@ export class BuildingsGenerator {
    * @param {number} minB
    * @param {number} maxB
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _rangesOverlap(minA, maxA, minB, maxB) {
     return maxA >= minB && minA <= maxB
@@ -393,23 +445,27 @@ export class BuildingsGenerator {
   /**
    * Pick one building material variant.
    * @param {() => number} rng
-   * @param {number} segmentIndex
+   * @param {{baseChanceRatio: number}} buildingColorSettings
    * @returns {THREE.Material}
-   * @private
-   * @ignore
    */
-  _pickBuildingMaterial(rng, segmentIndex) {
-    const baseIndex = Math.floor(rng() * this.resources.palettes.building.length)
-    const materialIndex = (baseIndex + segmentIndex) % this.resources.palettes.building.length
-    return this.resources.palettes.building[materialIndex]
+  _pickBuildingMaterial(rng, buildingColorSettings) {
+    if (rng() < buildingColorSettings.baseChanceRatio) {
+      return this.resources.palettes.building.base
+    }
+
+    const randomPalette = this.resources.palettes.building.random
+    if (!Array.isArray(randomPalette) || randomPalette.length === 0) {
+      return this.resources.palettes.building.base
+    }
+
+    const materialIndex = Math.floor(rng() * randomPalette.length)
+    return randomPalette[materialIndex]
   }
 
   /**
    * Pick one window material for an entire building.
    * @param {() => number} rng
    * @returns {THREE.Material}
-   * @private
-   * @ignore
    */
   _pickWindowBuildingMaterial(rng) {
     const materialIndex = Math.floor(rng() * this.resources.palettes.windowBuildingMaterial.length)
@@ -420,8 +476,6 @@ export class BuildingsGenerator {
    * Pick one neon material from the cyber palette.
    * @param {() => number} rng
    * @returns {THREE.Material}
-   * @private
-   * @ignore
    */
   _pickNeonMaterial(rng) {
     const materialIndex = Math.floor(rng() * this.resources.palettes.neon.length)
@@ -439,12 +493,12 @@ export class BuildingsGenerator {
    * @param {number} height
    * @param {number} depth
    * @returns {void}
-   * @private
-   * @ignore
    */
-  _addWrappedPerimeterLines(chunkGroup, rng, posX, posY, posZ, width, height, depth, detailFactor = 1) {
-    const lineBaseCount = Math.max(12, Math.floor(height / 3.6))
-    const lineCount = Math.max(4, Math.floor(lineBaseCount * (0.2 + detailFactor * 0.8)))
+  _addWrappedPerimeterLines(chunkGroup, rng, posX, posY, posZ, width, height, depth, detailFactor = 1, wrappedLineSettings = null) {
+    const minLines = wrappedLineSettings?.minLines ?? 12
+    const maxLines = wrappedLineSettings?.maxLines ?? 28
+    const lineBaseCount = minLines + Math.floor(rng() * (Math.max(minLines, maxLines) - minLines + 1))
+    const lineCount = Math.max(1, Math.floor(lineBaseCount * (0.2 + detailFactor * 0.8)))
     const yMin = -height * 0.5 + 1
     const yMax = height * 0.5 - 1
 
@@ -489,8 +543,6 @@ export class BuildingsGenerator {
    * @param {number} depth
    * @param {number} sideIndex
    * @returns {void}
-   * @private
-   * @ignore
    */
   _addNeonStrips(chunkGroup, rng, posX, posY, posZ, width, height, depth, sideIndex, detailFactor = 1) {
     const stripBaseCount = 3 + Math.floor(rng() * 6)
@@ -521,8 +573,6 @@ export class BuildingsGenerator {
    * @param {number} depth
    * @param {number} sideIndex
    * @returns {void}
-   * @private
-   * @ignore
    */
   _addNeonBands(chunkGroup, rng, posX, posY, posZ, width, height, depth, sideIndex, detailFactor = 1) {
     const bandBaseCount = 1 + Math.floor(rng() * 2)
@@ -552,8 +602,6 @@ export class BuildingsGenerator {
    * @param {number} depth
    * @param {number} sideIndex
    * @returns {void}
-   * @private
-   * @ignore
    */
   _addSignPanels(chunkGroup, rng, posX, posY, posZ, width, height, depth, sideIndex, detailFactor = 1) {
     const signBaseCount = 2 + Math.floor(rng() * 2)
@@ -586,8 +634,6 @@ export class BuildingsGenerator {
    * @param {number} sideIndex
    * @param {THREE.Material} windowMaterial
    * @returns {void}
-   * @private
-   * @ignore
    */
   _addWindowPanels(chunkGroup, rng, posX, posY, posZ, width, height, depth, sideIndex, windowMaterial, detailFactor = 1) {
     const frontInstances = this._collectFrontWindowInstances(rng, width, height, depth, sideIndex, detailFactor)
@@ -616,8 +662,6 @@ export class BuildingsGenerator {
    * @param {number} depth
    * @param {number} sideIndex
    * @returns {Array<{x: number, y: number, z: number}>}
-   * @private
-   * @ignore
    */
   _collectFrontWindowInstances(rng, width, height, depth, sideIndex, detailFactor = 1) {
     const detail = THREE.MathUtils.clamp(detailFactor, 0.2, 1)
@@ -660,8 +704,6 @@ export class BuildingsGenerator {
    * @param {number} depth
    * @param {number} sideIndex
    * @returns {Array<{x: number, y: number, z: number}>}
-   * @private
-   * @ignore
    */
   _collectSideWindowInstances(rng, width, height, depth, sideIndex, detailFactor = 1) {
     const detail = THREE.MathUtils.clamp(detailFactor, 0.2, 1)
@@ -701,8 +743,6 @@ export class BuildingsGenerator {
    * @param {number} count
    * @param {THREE.Material} windowMaterial
    * @returns {THREE.InstancedMesh}
-   * @private
-   * @ignore
    */
   _createWindowInstancedMesh(count, windowMaterial) {
     const mesh = new THREE.InstancedMesh(this.resources.geometries.windowPanel, windowMaterial, count)
@@ -717,8 +757,6 @@ export class BuildingsGenerator {
    * @param {Array<{x: number, y: number, z: number}>} instances
    * @param {boolean} rotateToSide
    * @returns {void}
-   * @private
-   * @ignore
    */
   _writeWindowInstances(mesh, instances, rotateToSide) {
     const dummy = new THREE.Object3D()
@@ -739,8 +777,6 @@ export class BuildingsGenerator {
    * @param {number} rowIndex
    * @param {number} rows
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computeRowDetailFactor(rowIndex, rows) {
     if (rows <= 1) {
@@ -757,8 +793,6 @@ export class BuildingsGenerator {
    * @param {number} bottomY
    * @param {number} totalHeight
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computeVerticalDetailFactor(segmentCenterY, bottomY, totalHeight) {
     const ratio = (segmentCenterY - bottomY) / Math.max(0.001, totalHeight)

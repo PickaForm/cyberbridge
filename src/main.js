@@ -4,6 +4,18 @@
  * Usage:
  * npm install
  * npm run dev
+ *
+ * Level config shape example:
+ * {
+ *   id: 1,
+ *   target: { distance, chrono, score, boysHit, girlsHit },
+ *   lose: { boysHit, girlsHit },
+ *   texts: { objective, win, lose, nextLevel, retry },
+ *   init: {
+ *     player: { moveSpeed: 20 },
+ *     crowd: { maxAgents: 80 }
+ *   }
+ * }
  */
 import "./styles.css"
 import * as THREE from "three"
@@ -17,75 +29,9 @@ import { DevTuningManager } from "./dev/devTuningManager.js"
 import { DevPalette } from "./dev/devPalette.js"
 import { AudioSystem } from "./audio/audioSystem.js"
 import { gameConfig } from "./config/gameConfig.js"
+import { loadGameLevels, normalizeLevelDefinition } from "./levels/levelLoader.js"
 
 const DEV_MODE_STORAGE_KEY = "cyberlove-dev-mode-v1"
-const GAME_LEVELS = [
-  {
-    id: 1,
-    moveSpeed: 20,
-    targetDistance: 1000,
-    targetChrono: 0,
-    targetGirlsHit: 0,
-    targetBoysHit: 0,
-    targetScore: 0,
-    loseOnGirlHitThreshold: 10,
-    loseOnBoyHitThreshold: 0,
-    objectiveText: "Pas taper les filles !",
-    loseText: "T'as percuté 10 filles, boulet !",
-    winText: "Pas mal, t'as évité d'avoir trop d'accidents !",
-    retryText: "Etre plus gentleman",
-    nextLevelText: "Continuer"
-  },
-  {
-    id: 2,
-    moveSpeed: 40,
-    targetDistance: 0,
-    targetChrono: 30000,
-    targetGirlsHit: 0,
-    targetBoysHit: 20,
-    targetScore: 0,
-    loseOnGirlHitThreshold: 10,
-    loseOnBoyHitThreshold: 0,
-    objectiveText: "Choisissez vos cibles !",
-    loseText: "Ouvre les yeux, les gars c'est les trucs en bleu !",
-    winText: "Sniper attitude, bravo !",
-    retryText: "Viser mieux",
-    nextLevelText: "Prêts pour un peu de vitesse ?"
-  },
-  {
-    id: 3,
-    moveSpeed: 80,
-    targetDistance: 4000,
-    targetChrono: 0,
-    targetGirlsHit: 0,
-    targetBoysHit: 120,
-    targetScore: 0,
-    loseOnGirlHitThreshold: 0,
-    loseOnBoyHitThreshold: 0,
-    objectiveText: "Baffez un max de mecs !",
-    loseText: "Manque d'ambition !",
-    winText: "Wow, t'es une vraie machine à baffes, respect !",
-    retryText: "Baffer mieux",
-    nextLevelText: "Je sais, donc laisse moi passer au level suivant, sinon..."
-  },
-  {
-    id: 4,
-    moveSpeed: 120,
-    targetDistance: 10000,
-    targetChrono: 0,
-    targetGirlsHit: 0,
-    targetBoysHit: 0,
-    targetScore: 200,
-    loseOnGirlHitThreshold: 0,
-    loseOnBoyHitThreshold: 0,
-    objectiveText: "Visez surtout des mecs. Question de ratio...\nMec +10, Fille -10",
-    loseText: "Hmmm, pas assez de réflexes. Recalé !",
-    winText: "OMG, t'as des réflexes de mouche !",
-    retryText: "OK, compris, je vais Use the Force.",
-    nextLevelText: "Y'a pas de next level, j'ai du boulot. Relancer le jeu ?"
-  }
-]
-
 /**
  * Game orchestrator.
  */
@@ -93,8 +39,9 @@ class CyberStreet {
   /**
    * @param {HTMLElement} appElement
    * @param {DevTuningManager} tuningManager
+   * @param {object[]} levels
    */
-  constructor(appElement, tuningManager) {
+  constructor(appElement, tuningManager, levels = []) {
     this.appElement = appElement
     this.tuningManager = tuningManager
     this.devPalette = null
@@ -125,6 +72,7 @@ class CyberStreet {
     this.maxDistanceMeters = 0
     this.isHitCountingEnabledForFrame = false
     this.levelElapsedMs = 0
+    this.levels = this._resolveLevels(levels)
     this.currentLevelIndex = 0
     this.gameState = "intro"
     this.pendingResult = null
@@ -141,7 +89,8 @@ class CyberStreet {
     this.levelOverlayActionElement = document.getElementById("levelOverlayAction")
     this.startPlayerPosition = this.player.mesh.position.clone()
     this.proceduralCity.applyDayNightProfile(this.rendererApp.getSkyProfile())
-    this.lastLiveProfile = tuningManager.getProfileClone()
+    this.baseRuntimeProfile = tuningManager.getProfileClone()
+    this.lastLiveProfile = this._cloneProfile(this.baseRuntimeProfile)
     this.lastFrameTime = performance.now()
     this.isRunning = true
 
@@ -168,39 +117,124 @@ class CyberStreet {
   }
 
   /**
+   * Return a clone of the active level definition.
+   * @returns {object}
+   */
+  getCurrentLevelDefinitionClone() {
+    return this._cloneProfile(this._getCurrentLevelDefinition())
+  }
+
+  /**
    * Start a level directly from its configured id.
    * @param {number} levelId
    * @returns {void}
    */
   testLevelById(levelId) {
     const normalizedLevelId = Math.max(1, Math.round(Number(levelId) || 1))
-    const foundLevelIndex = GAME_LEVELS.findIndex((levelDefinition) => levelDefinition.id === normalizedLevelId)
-    this.currentLevelIndex = foundLevelIndex >= 0 ? foundLevelIndex : 0
+    const foundLevelIndex = this.levels.findIndex((levelDefinition) => Number(levelDefinition?.id) === normalizedLevelId)
+    if (foundLevelIndex >= 0) {
+      this.currentLevelIndex = foundLevelIndex
+      this._startCurrentLevel()
+      return this.getCurrentLevelDefinitionClone()
+    }
+
+    const fallbackLevelIndex = normalizedLevelId - 1
+    if (this.levels[fallbackLevelIndex]) {
+      this.currentLevelIndex = fallbackLevelIndex
+      this._startCurrentLevel()
+      return this.getCurrentLevelDefinitionClone()
+    }
+
+    this.currentLevelIndex = 0
+    this._startCurrentLevel()
+    return this.getCurrentLevelDefinitionClone()
+  }
+
+  /**
+   * Move to previous/next level with wrap-around and start it.
+   * @param {number} step
+   * @returns {object}
+   */
+  cycleLevel(step) {
+    const levelCount = this.levels.length
+    if (levelCount <= 0) {
+      return this.getCurrentLevelDefinitionClone()
+    }
+
+    const normalizedStep = Math.round(Number(step) || 0)
+    if (normalizedStep === 0) {
+      return this.getCurrentLevelDefinitionClone()
+    }
+
+    let nextLevelIndex = (this.currentLevelIndex + normalizedStep) % levelCount
+    if (nextLevelIndex < 0) {
+      nextLevelIndex += levelCount
+    }
+
+    this.currentLevelIndex = nextLevelIndex
+    this._startCurrentLevel()
+    return this.getCurrentLevelDefinitionClone()
+  }
+
+  /**
+   * Save one complete level JSON and restart the current level for immediate testing.
+   * @param {object} nextLevelDefinition
+   * @param {object} profile
+   * @returns {void}
+   */
+  saveLevelAndRestart(nextLevelDefinition, profile) {
+    const normalizedLevelDefinition = normalizeLevelDefinition(nextLevelDefinition, this._getCurrentLevelDefinition().id)
+    normalizedLevelDefinition.init = this._extractCurrentValuesFromProfile(profile)
+    const targetLevelIndex = this.levels.findIndex((levelDefinition) => levelDefinition.id === normalizedLevelDefinition.id)
+    if (targetLevelIndex >= 0) {
+      this.levels[targetLevelIndex] = normalizedLevelDefinition
+      this.currentLevelIndex = targetLevelIndex
+    } else {
+      this.levels.push(normalizedLevelDefinition)
+      this.levels.sort((leftLevel, rightLevel) => leftLevel.id - rightLevel.id)
+      this.currentLevelIndex = this.levels.findIndex((levelDefinition) => levelDefinition.id === normalizedLevelDefinition.id)
+    }
+
+    this._downloadLevelAsJson(normalizedLevelDefinition)
+    this._applyRuntimeProfile(profile, true)
     this._startCurrentLevel()
   }
 
   /**
    * Bind overlay input events used by level intro and results.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _bindLevelOverlayEvents() {
     this._onOverlayKeyDown = this._onOverlayKeyDown.bind(this)
     this._onOverlayActionClick = this._onOverlayActionClick.bind(this)
+    this._onOverlayPointerDown = this._onOverlayPointerDown.bind(this)
     window.addEventListener("keydown", this._onOverlayKeyDown)
     this.levelOverlayActionElement?.addEventListener("click", this._onOverlayActionClick)
+    this.levelOverlayElement?.addEventListener("pointerdown", this._onOverlayPointerDown)
+  }
+
+  /**
+   * Normalize initial levels list and guarantee at least one level.
+   * @param {object[]} levels
+   * @returns {object[]}
+   */
+  _resolveLevels(levels) {
+    if (!Array.isArray(levels) || levels.length <= 0) {
+      return [normalizeLevelDefinition({}, 1)]
+    }
+
+    const normalizedLevels = levels.map((levelDefinition, arrayIndex) => normalizeLevelDefinition(levelDefinition, arrayIndex + 1))
+    return normalizedLevels.sort((leftLevel, rightLevel) => leftLevel.id - rightLevel.id)
   }
 
   /**
    * Start the currently selected level from intro state.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _startCurrentLevel() {
     const levelDefinition = this._getCurrentLevelDefinition()
-    gameConfig.player.moveSpeed = levelDefinition.moveSpeed
+    const levelRuntimeProfile = this._buildLevelRuntimeProfile(levelDefinition)
+    this._applyRuntimeProfile(levelRuntimeProfile, false)
     this._resetPlayerAndSystemsForLevel()
     this._resetRunStats()
     this._showLevelIntro(levelDefinition)
@@ -209,18 +243,92 @@ class CyberStreet {
   /**
    * Return the active level definition.
    * @returns {object}
-   * @private
-   * @ignore
    */
   _getCurrentLevelDefinition() {
-    return GAME_LEVELS[this.currentLevelIndex] ?? GAME_LEVELS[GAME_LEVELS.length - 1]
+    return this.levels[this.currentLevelIndex] ?? this.levels[this.levels.length - 1]
+  }
+
+  /**
+   * Resolve one numeric target threshold from level definition.
+   * @param {object} levelDefinition
+   * @param {string} targetKey
+   * @returns {number}
+   */
+  _getLevelTargetThreshold(levelDefinition, targetKey) {
+    const rawValue = levelDefinition?.target?.[targetKey]
+    return this._getActiveLevelThreshold(rawValue)
+  }
+
+  /**
+   * Resolve one numeric lose threshold from level definition.
+   * @param {object} levelDefinition
+   * @param {string} loseKey
+   * @returns {number}
+   */
+  _getLevelLoseThreshold(levelDefinition, loseKey) {
+    const rawValue = levelDefinition?.lose?.[loseKey]
+    return this._getActiveLevelThreshold(rawValue)
+  }
+
+  /**
+   * Resolve one UI text from level definition.
+   * @param {object} levelDefinition
+   * @param {string} textKey
+   * @returns {string}
+   */
+  _getLevelText(levelDefinition, textKey) {
+    return String(levelDefinition?.texts?.[textKey] ?? "").trim()
+  }
+
+  /**
+   * Build runtime profile by merging base tuning with level init overrides.
+   * @param {object} levelDefinition
+   * @returns {object}
+   */
+  _buildLevelRuntimeProfile(levelDefinition) {
+    const runtimeProfile = this._cloneProfile(this.baseRuntimeProfile)
+    const levelInitValues = levelDefinition?.init ?? {}
+    this._mergeLevelInitIntoProfile(runtimeProfile, levelInitValues)
+    return runtimeProfile
+  }
+
+  /**
+   * Merge level init values into a tuning profile with schema-aware filtering.
+   * @param {object} profile
+   * @param {object} levelInitValues
+   * @returns {void}
+   */
+  _mergeLevelInitIntoProfile(profile, levelInitValues) {
+    if (!levelInitValues || typeof levelInitValues !== "object") {
+      return
+    }
+
+    for (const [sectionKey, sectionValues] of Object.entries(levelInitValues)) {
+      if (!sectionValues || typeof sectionValues !== "object") {
+        continue
+      }
+
+      const profileSection = profile?.[sectionKey]
+      if (!profileSection || typeof profileSection !== "object") {
+        console.warn(`Unknown level init section "${sectionKey}" ignored`)
+        continue
+      }
+
+      for (const [paramKey, rawValue] of Object.entries(sectionValues)) {
+        const parameterSchema = profileSection[paramKey]
+        if (!parameterSchema || typeof parameterSchema !== "object" || !("current" in parameterSchema)) {
+          console.warn(`Unknown level init parameter "${sectionKey}.${paramKey}" ignored`)
+          continue
+        }
+
+        parameterSchema.current = rawValue
+      }
+    }
   }
 
   /**
    * Reset score and counters for a fresh level attempt.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _resetRunStats() {
     this.score = 0
@@ -239,8 +347,6 @@ class CyberStreet {
   /**
    * Reset player position and recreate dynamic systems for a level restart.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _resetPlayerAndSystemsForLevel() {
     this.player.resetState(this.startPlayerPosition)
@@ -255,8 +361,6 @@ class CyberStreet {
    * Show level objective panel and pause gameplay until user input.
    * @param {object} levelDefinition
    * @returns {void}
-   * @private
-   * @ignore
    */
   _showLevelIntro(levelDefinition) {
     this.gameState = "intro"
@@ -272,8 +376,6 @@ class CyberStreet {
   /**
    * Enter active gameplay state and hide overlay.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _startGameplay() {
     if (this.gameState !== "intro") {
@@ -292,16 +394,14 @@ class CyberStreet {
    * Build intro objective block with automatically generated active targets.
    * @param {object} levelDefinition
    * @returns {string}
-   * @private
-   * @ignore
    */
   _buildLevelObjectiveText(levelDefinition) {
     const objectiveLines = []
-    const targetBoysHit = this._getActiveLevelThreshold(levelDefinition.targetBoysHit)
-    const targetGirlsHit = this._getActiveLevelThreshold(levelDefinition.targetGirlsHit)
-    const targetScore = this._getActiveLevelThreshold(levelDefinition.targetScore)
-    const targetDistance = this._getActiveLevelThreshold(levelDefinition.targetDistance)
-    const targetChrono = this._getActiveLevelThreshold(levelDefinition.targetChrono)
+    const targetBoysHit = this._getLevelTargetThreshold(levelDefinition, "boysHit")
+    const targetGirlsHit = this._getLevelTargetThreshold(levelDefinition, "girlsHit")
+    const targetScore = this._getLevelTargetThreshold(levelDefinition, "score")
+    const targetDistance = this._getLevelTargetThreshold(levelDefinition, "distance")
+    const targetChrono = this._getLevelTargetThreshold(levelDefinition, "chrono")
 
     if (targetBoysHit > 0) {
       objectiveLines.push(`Boyz à baffer : ${targetBoysHit}`)
@@ -323,7 +423,7 @@ class CyberStreet {
       objectiveLines.push(`T'as exactement ${this._formatChronoSeconds(targetChrono)} secondes !`)
     }
 
-    const baseText = String(levelDefinition.objectiveText ?? "").trim()
+    const baseText = this._getLevelText(levelDefinition, "objective")
     if (objectiveLines.length <= 0) {
       return baseText
     }
@@ -339,8 +439,6 @@ class CyberStreet {
    * Parse one level threshold and clamp it to a non-negative integer.
    * @param {unknown} rawValue
    * @returns {number}
-   * @private
-   * @ignore
    */
   _getActiveLevelThreshold(rawValue) {
     const numericValue = Number(rawValue)
@@ -355,8 +453,6 @@ class CyberStreet {
    * Format integer with spaces as thousands separators.
    * @param {number} value
    * @returns {string}
-   * @private
-   * @ignore
    */
   _formatIntegerWithSpacing(value) {
     return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")
@@ -366,8 +462,6 @@ class CyberStreet {
    * Format milliseconds to seconds string for objective text.
    * @param {number} milliseconds
    * @returns {string}
-   * @private
-   * @ignore
    */
   _formatChronoSeconds(milliseconds) {
     const seconds = milliseconds / 1000
@@ -383,8 +477,6 @@ class CyberStreet {
    * @param {boolean} isWin
    * @param {string} message
    * @returns {void}
-   * @private
-   * @ignore
    */
   _finishLevel(isWin, message) {
     if (this.gameState !== "playing") {
@@ -398,7 +490,7 @@ class CyberStreet {
       title: isWin ? "Victoire" : "Perdu",
       text: message,
       hint: "",
-      actionLabel: isWin ? levelDefinition.nextLevelText : levelDefinition.retryText
+      actionLabel: isWin ? this._getLevelText(levelDefinition, "nextLevel") : this._getLevelText(levelDefinition, "retry")
     })
     this._renderChronoHud()
   }
@@ -406,12 +498,10 @@ class CyberStreet {
   /**
    * Advance to next level or loop to first one after final win.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _continueAfterWin() {
     const nextLevelIndex = this.currentLevelIndex + 1
-    if (nextLevelIndex >= GAME_LEVELS.length) {
+    if (nextLevelIndex >= this.levels.length) {
       this.currentLevelIndex = 0
     } else {
       this.currentLevelIndex = nextLevelIndex
@@ -422,18 +512,22 @@ class CyberStreet {
   /**
    * Handle keyboard input for intro overlay.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onOverlayKeyDown() {
     this._startGameplay()
   }
 
   /**
+   * Handle pointer/touch press on overlay during intro.
+   * @returns {void}
+   */
+  _onOverlayPointerDown() {
+    this._startGameplay()
+  }
+
+  /**
    * Handle overlay action button click for win/lose states.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onOverlayActionClick() {
     if (this.pendingResult === "lose") {
@@ -454,8 +548,6 @@ class CyberStreet {
    * @param {string} content.hint
    * @param {string} content.actionLabel
    * @returns {void}
-   * @private
-   * @ignore
    */
   _setOverlayContent(content) {
     if (!this.levelOverlayElement) {
@@ -474,8 +566,6 @@ class CyberStreet {
   /**
    * Hide overlay element.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _hideOverlay() {
     if (!this.levelOverlayElement) {
@@ -491,6 +581,16 @@ class CyberStreet {
    * @returns {void}
    */
   applyLiveTuning(profile) {
+    this._applyRuntimeProfile(profile, true)
+  }
+
+  /**
+   * Apply one runtime profile and refresh dependent systems.
+   * @param {object} profile
+   * @param {boolean} shouldPersistAsBaseProfile
+   * @returns {void}
+   */
+  _applyRuntimeProfile(profile, shouldPersistAsBaseProfile = false) {
     this.tuningManager.applyProfileLive(profile)
     const skyProfile = this.rendererApp.applyRuntimeTuning()
     this.player.applyRuntimeTuning()
@@ -500,8 +600,9 @@ class CyberStreet {
 
     const shouldRecreateProceduralCity = this._hasLiveSectionChanged(profile, "buildings") ||
       this._hasLiveSectionChanged(profile, "stands") ||
-      this._hasLiveSectionChanged(profile, "clouds")
-    const shouldRecreateCrowd = this._hasLiveSectionChanged(profile, "crowd")
+      this._hasLiveSectionChanged(profile, "clouds") ||
+      this._hasLiveSectionChanged(profile, "world")
+    const shouldRecreateCrowd = this._hasLiveSectionChanged(profile, "crowd") || this._hasLiveSectionChanged(profile, "buildings")
     const shouldRecreateFlyingCars = this._hasLiveSectionChanged(profile, "flyingCars")
 
     if (shouldRecreateProceduralCity) {
@@ -518,7 +619,10 @@ class CyberStreet {
 
     this.proceduralCity.applyDayNightProfile(skyProfile)
 
-    this.lastLiveProfile = JSON.parse(JSON.stringify(profile))
+    this.lastLiveProfile = this._cloneProfile(profile)
+    if (shouldPersistAsBaseProfile) {
+      this.baseRuntimeProfile = this._cloneProfile(profile)
+    }
   }
 
   /**
@@ -543,8 +647,6 @@ class CyberStreet {
   /**
    * Recreate only procedural city chunks and visuals.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _recreateProceduralCity() {
     this.proceduralCity.dispose()
@@ -556,8 +658,6 @@ class CyberStreet {
   /**
    * Recreate only crowd simulation and rendering.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _recreateCrowdSystem() {
     this.crowd.dispose()
@@ -571,8 +671,6 @@ class CyberStreet {
    * Handle one NPC hit event: play SFX and update score by NPC variant.
    * @param {object} hitPayload
    * @returns {void}
-   * @private
-   * @ignore
    */
   _handleNpcHit(hitPayload) {
     if (this.gameState !== "playing") {
@@ -596,23 +694,21 @@ class CyberStreet {
     this._renderHitCounters()
 
     const levelDefinition = this._getCurrentLevelDefinition()
-    const loseOnGirlHitThreshold = Math.max(0, Number(levelDefinition.loseOnGirlHitThreshold) || 0)
-    const loseOnBoyHitThreshold = Math.max(0, Number(levelDefinition.loseOnBoyHitThreshold) || 0)
+    const loseOnGirlHitThreshold = this._getLevelLoseThreshold(levelDefinition, "girlsHit")
+    const loseOnBoyHitThreshold = this._getLevelLoseThreshold(levelDefinition, "boysHit")
     if (isGirlHit && loseOnGirlHitThreshold > 0 && this.girlHits >= loseOnGirlHitThreshold) {
-      this._finishLevel(false, levelDefinition.loseText)
+      this._finishLevel(false, this._getLevelText(levelDefinition, "lose"))
       return
     }
 
     if (!isGirlHit && loseOnBoyHitThreshold > 0 && this.boyHits >= loseOnBoyHitThreshold) {
-      this._finishLevel(false, levelDefinition.loseText)
+      this._finishLevel(false, this._getLevelText(levelDefinition, "lose"))
     }
   }
 
   /**
    * Check whether player is currently moving backward.
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _isPlayerMovingBackward() {
     const forwardVelocity = Number(this.player?.velocity?.forward ?? 0)
@@ -622,8 +718,6 @@ class CyberStreet {
   /**
    * Render score value into HUD if score element exists.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _renderScore() {
     if (!this.scoreElement) {
@@ -637,8 +731,6 @@ class CyberStreet {
   /**
    * Render girls and boys hit counters in HUD.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _renderHitCounters() {
     if (this.girlHitsElement) {
@@ -656,8 +748,6 @@ class CyberStreet {
    * Render traveled distance from start position using configurable scale.
    * @param {THREE.Vector3} playerPosition
    * @returns {void}
-   * @private
-   * @ignore
    */
   _renderDistance(playerPosition) {
     if (!this.distanceElement) {
@@ -674,8 +764,6 @@ class CyberStreet {
   /**
    * Render centered countdown HUD when current level has a chrono target.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _renderChronoHud() {
     if (!this.chronoHudElement || !this.chronoValueElement) {
@@ -683,7 +771,7 @@ class CyberStreet {
     }
 
     const levelDefinition = this._getCurrentLevelDefinition()
-    const targetChrono = this._getActiveLevelThreshold(levelDefinition.targetChrono)
+    const targetChrono = this._getLevelTargetThreshold(levelDefinition, "chrono")
     const shouldShowChrono = this.gameState === "playing" && targetChrono > 0
     this.chronoHudElement.classList.toggle("chrono-hud-hidden", !shouldShowChrono)
     if (!shouldShowChrono) {
@@ -698,8 +786,6 @@ class CyberStreet {
    * Format remaining countdown milliseconds to display string.
    * @param {number} remainingMilliseconds
    * @returns {string}
-   * @private
-   * @ignore
    */
   _formatCountdownTime(remainingMilliseconds) {
     const clampedMilliseconds = Math.max(0, remainingMilliseconds)
@@ -720,8 +806,6 @@ class CyberStreet {
   /**
    * Sync score and distance font sizes from player HUD settings.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _syncHudTypography() {
     const scoreSize = Math.max(10, gameConfig.player.scoreSize)
@@ -746,8 +830,6 @@ class CyberStreet {
    * Compute planar distance from starting point.
    * @param {THREE.Vector3} playerPosition
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computeDistanceFromStart(playerPosition) {
     const deltaX = playerPosition.x - this.startPlayerPosition.x
@@ -759,8 +841,6 @@ class CyberStreet {
    * Compute displayed distance using current runtime coefficient.
    * @param {THREE.Vector3} playerPosition
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computeDisplayDistance(playerPosition) {
     const distanceFromStart = this._computeDistanceFromStart(playerPosition)
@@ -771,8 +851,6 @@ class CyberStreet {
   /**
    * Recreate only flying cars simulation and rendering.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _recreateFlyingCarsSystem() {
     this.flyingCars.dispose()
@@ -783,8 +861,6 @@ class CyberStreet {
   /**
    * Bind interaction handlers to class scope.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _bindInteractionHandlers() {
     this._onPointerDown = this._onPointerDown.bind(this)
@@ -796,8 +872,6 @@ class CyberStreet {
   /**
    * Register interaction events.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _bindInteractionEvents() {
     const domElement = this.rendererApp.getDomElement()
@@ -811,8 +885,6 @@ class CyberStreet {
   /**
    * Remove interaction events.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _unbindInteractionEvents() {
     const domElement = this.rendererApp.getDomElement()
@@ -827,8 +899,6 @@ class CyberStreet {
    * Capture pointer start position to validate click-like interactions.
    * @param {PointerEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onPointerDown(event) {
     this.audioSystem.notifyUserGesture()
@@ -851,8 +921,6 @@ class CyberStreet {
    * Handle pointer interaction with crowd NPC instances.
    * @param {PointerEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onPointerUp(event) {
     if (!this.pointerInteractionState.active) {
@@ -881,8 +949,6 @@ class CyberStreet {
   /**
    * Clear pointer interaction state when browser cancels the pointer stream.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onPointerCancel() {
     this.pointerInteractionState.active = false
@@ -893,8 +959,6 @@ class CyberStreet {
    * Fallback click interaction for desktop when pointer sequence is not delivered.
    * @param {MouseEvent} event
    * @returns {void}
-   * @private
-   * @ignore
    */
   _onCanvasClick(event) {
     this.audioSystem.notifyUserGesture()
@@ -911,8 +975,6 @@ class CyberStreet {
    * @param {number} clientX
    * @param {number} clientY
    * @returns {void}
-   * @private
-   * @ignore
    */
   _tryInteractWithNpcAt(clientX, clientY) {
     if (this.gameState !== "playing") {
@@ -942,8 +1004,6 @@ class CyberStreet {
    * @param {object} nextProfile
    * @param {string} sectionKey
    * @returns {boolean}
-   * @private
-   * @ignore
    */
   _hasLiveSectionChanged(nextProfile, sectionKey) {
     const previousSection = this.lastLiveProfile?.[sectionKey] ?? {}
@@ -952,10 +1012,74 @@ class CyberStreet {
   }
 
   /**
+   * Deep clone a JSON-compatible profile object.
+   * @param {object} profile
+   * @returns {object}
+   */
+  _cloneProfile(profile) {
+    return JSON.parse(JSON.stringify(profile))
+  }
+
+  /**
+   * Extract current values from tuning profile schema.
+   * @param {object} profile
+   * @returns {object}
+   */
+  _extractCurrentValuesFromProfile(profile) {
+    const result = {}
+    if (!profile || typeof profile !== "object") {
+      return result
+    }
+
+    for (const [sectionKey, sectionValues] of Object.entries(profile)) {
+      if (!sectionValues || typeof sectionValues !== "object") {
+        continue
+      }
+
+      result[sectionKey] = {}
+      for (const [paramKey, paramSchema] of Object.entries(sectionValues)) {
+        if (!paramSchema || typeof paramSchema !== "object") {
+          continue
+        }
+        result[sectionKey][paramKey] = paramSchema.current
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * Download one level definition as JSON file.
+   * @param {object} levelDefinition
+   * @returns {void}
+   */
+  _downloadLevelAsJson(levelDefinition) {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return
+    }
+
+    try {
+      const levelId = Math.max(1, Math.round(Number(levelDefinition?.id) || 1))
+      const fileName = `level_${String(levelId).padStart(2, "0")}.json`
+      const jsonContent = `${JSON.stringify(levelDefinition, null, 2)}\n`
+      const fileBlob = new Blob([jsonContent], { type: "application/json;charset=utf-8" })
+      const downloadUrl = URL.createObjectURL(fileBlob)
+      const downloadLink = document.createElement("a")
+      downloadLink.href = downloadUrl
+      downloadLink.download = fileName
+      downloadLink.style.display = "none"
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
+      document.body.removeChild(downloadLink)
+      URL.revokeObjectURL(downloadUrl)
+    } catch (error) {
+      console.warn("Failed to download level json", error)
+    }
+  }
+
+  /**
    * Main animation loop.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _loop() {
     if (!this.isRunning) {
@@ -994,10 +1118,20 @@ class CyberStreet {
   }
 
   /**
+   * Check whether configured hit objectives are reached for current counters.
+   * @param {number} targetGirlsHit
+   * @param {number} targetBoysHit
+   * @returns {boolean}
+   */
+  _areHitTargetsReached(targetGirlsHit, targetBoysHit) {
+    const isGirlsTargetReached = targetGirlsHit <= 0 || this.girlHits >= targetGirlsHit
+    const isBoysTargetReached = targetBoysHit <= 0 || this.boyHits >= targetBoysHit
+    return isGirlsTargetReached && isBoysTargetReached
+  }
+
+  /**
    * Evaluate active triggers and resolve win/lose with combined victory goals.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _evaluateLevelCompletion() {
     if (this.gameState !== "playing") {
@@ -1005,13 +1139,22 @@ class CyberStreet {
     }
 
     const levelDefinition = this._getCurrentLevelDefinition()
-    const targetDistance = this._getActiveLevelThreshold(levelDefinition.targetDistance)
-    const targetChrono = this._getActiveLevelThreshold(levelDefinition.targetChrono)
-    const targetGirlsHit = this._getActiveLevelThreshold(levelDefinition.targetGirlsHit)
-    const targetBoysHit = this._getActiveLevelThreshold(levelDefinition.targetBoysHit)
-    const targetScore = this._getActiveLevelThreshold(levelDefinition.targetScore)
+    const targetDistance = this._getLevelTargetThreshold(levelDefinition, "distance")
+    const targetChrono = this._getLevelTargetThreshold(levelDefinition, "chrono")
+    const targetGirlsHit = this._getLevelTargetThreshold(levelDefinition, "girlsHit")
+    const targetBoysHit = this._getLevelTargetThreshold(levelDefinition, "boysHit")
+    const targetScore = this._getLevelTargetThreshold(levelDefinition, "score")
     const isDistanceTriggerActive = targetDistance > 0
     const isChronoTriggerActive = targetChrono > 0
+    const hasImmediateHitWinTrigger = !isDistanceTriggerActive && !isChronoTriggerActive
+    const hasAnyHitTarget = targetGirlsHit > 0 || targetBoysHit > 0
+    const isHitTargetsReached = this._areHitTargetsReached(targetGirlsHit, targetBoysHit)
+
+    if (hasImmediateHitWinTrigger && hasAnyHitTarget && isHitTargetsReached) {
+      this._finishLevel(true, this._getLevelText(levelDefinition, "win"))
+      return
+    }
+
     const isDistanceReached = isDistanceTriggerActive && this.distanceMeters >= targetDistance
     const isChronoExpired = isChronoTriggerActive && this.levelElapsedMs >= targetChrono
 
@@ -1020,20 +1163,19 @@ class CyberStreet {
     }
 
     if (isChronoExpired && isDistanceTriggerActive && !isDistanceReached) {
-      this._finishLevel(false, levelDefinition.loseText)
+      this._finishLevel(false, this._getLevelText(levelDefinition, "lose"))
       return
     }
 
-    const isGirlsTargetReached = targetGirlsHit <= 0 || this.girlHits >= targetGirlsHit
-    const isBoysTargetReached = targetBoysHit <= 0 || this.boyHits >= targetBoysHit
+    const isHitTargetReached = this._areHitTargetsReached(targetGirlsHit, targetBoysHit)
     const isScoreTargetReached = targetScore <= 0 || this.score >= targetScore
-    const isVictory = isGirlsTargetReached && isBoysTargetReached && isScoreTargetReached
+    const isVictory = isHitTargetReached && isScoreTargetReached
     if (isVictory) {
-      this._finishLevel(true, levelDefinition.winText)
+      this._finishLevel(true, this._getLevelText(levelDefinition, "win"))
       return
     }
 
-    this._finishLevel(false, levelDefinition.loseText)
+    this._finishLevel(false, this._getLevelText(levelDefinition, "lose"))
   }
 }
 
@@ -1044,8 +1186,6 @@ class CyberStreet {
  * const isDevModeEnabled = _resolveDevMode()
  * // URL ?dev=true|false has priority and persists to localStorage
  * @returns {boolean}
- * @private
- * @ignore
  */
 function _resolveDevMode() {
   const devQueryValue = _readDevQueryValue()
@@ -1060,8 +1200,6 @@ function _resolveDevMode() {
 /**
  * Read and normalize ?dev query value.
  * @returns {boolean | null}
- * @private
- * @ignore
  */
 function _readDevQueryValue() {
   const searchParams = new URLSearchParams(window.location.search)
@@ -1083,8 +1221,6 @@ function _readDevQueryValue() {
 /**
  * Read persisted dev mode from local storage.
  * @returns {boolean}
- * @private
- * @ignore
  */
 function _readPersistedDevMode() {
   try {
@@ -1100,8 +1236,6 @@ function _readPersistedDevMode() {
  * Persist dev mode state in local storage.
  * @param {boolean} isDevModeEnabled
  * @returns {void}
- * @private
- * @ignore
  */
 function _persistDevMode(isDevModeEnabled) {
   try {
@@ -1114,8 +1248,6 @@ function _persistDevMode(isDevModeEnabled) {
 /**
  * Create one random world seed for procedural generation.
  * @returns {string}
- * @private
- * @ignore
  */
 function _createRuntimeWorldSeed() {
   const randomPart = Math.floor(Math.random() * 1e9).toString(36)
@@ -1138,16 +1270,32 @@ if (hudElement && hudCloseButton) {
 const tuningManager = new DevTuningManager()
 tuningManager.applyRuntime()
 
-const gameInstance = new CyberStreet(appElement, tuningManager)
-const isDevModeEnabled = _resolveDevMode()
-if (isDevModeEnabled) {
-  const devPalette = new DevPalette(tuningManager, (profile) => {
-    gameInstance.applyLiveTuning(profile)
-  }, (levelId) => {
-    gameInstance.testLevelById(levelId)
-  })
-  gameInstance.setDevPalette(devPalette)
+async function _bootstrapGame() {
+  const loadedLevels = await loadGameLevels()
+  const gameInstance = new CyberStreet(appElement, tuningManager, loadedLevels)
+  const isDevModeEnabled = _resolveDevMode()
+  if (isDevModeEnabled) {
+    const devPalette = new DevPalette(tuningManager, {
+      onLiveProfileChange: (profile) => {
+        gameInstance.applyLiveTuning(profile)
+      },
+      onCycleLevelRequest: (step) => {
+        return gameInstance.cycleLevel(step)
+      },
+      onLevelDefinitionRequest: () => {
+        return gameInstance.getCurrentLevelDefinitionClone()
+      },
+      onSaveLevelRequest: (levelDefinition, profile) => {
+        gameInstance.saveLevelAndRestart(levelDefinition, profile)
+      }
+    })
+    gameInstance.setDevPalette(devPalette)
+  }
+
+  window.CyberStreet = gameInstance
+  window.cyberloveDevTuningManager = tuningManager
 }
 
-window.CyberStreet = gameInstance
-window.cyberloveDevTuningManager = tuningManager
+_bootstrapGame().catch((error) => {
+  console.error("Failed to bootstrap game", error)
+})

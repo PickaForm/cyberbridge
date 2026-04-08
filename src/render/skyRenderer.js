@@ -54,7 +54,7 @@ export class SkyRenderer {
    * @returns {void}
    */
   applyRuntimeTuning() {
-    const timeOfDay = THREE.MathUtils.clamp(getRuntimeTuningNumber("sky.timeOfDay", 2), 0, 24)
+    const timeOfDay = THREE.MathUtils.clamp(getRuntimeTuningNumber("world.timeOfDay", 2), 0, 24)
     if (Math.abs(timeOfDay - this.lastAppliedTimeOfDay) < 0.001) {
       return this.currentProfile
     }
@@ -93,8 +93,6 @@ export class SkyRenderer {
    * Draw gradient sky texture from palette values.
    * @param {object} palette
    * @returns {void}
-   * @private
-   * @ignore
    */
   _drawSkyTexture(palette) {
     const size = this.canvasSize
@@ -143,8 +141,6 @@ export class SkyRenderer {
    * Compute realistic palette transitions from time-of-day.
    * @param {number} timeOfDay
    * @returns {object}
-   * @private
-   * @ignore
    */
   _computeSkyPalette(timeOfDay) {
     const keyframes = [
@@ -197,8 +193,6 @@ export class SkyRenderer {
   /**
    * Create world-space starfield points.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _createStarField() {
     const dimStarCount = 950
@@ -214,8 +208,6 @@ export class SkyRenderer {
    * Update star opacity from day/night cycle.
    * @param {number} timeOfDay
    * @returns {void}
-   * @private
-   * @ignore
    */
   _updateStarVisibility(timeOfDay) {
     const visibility = this._computeStarVisibility(timeOfDay)
@@ -229,8 +221,6 @@ export class SkyRenderer {
    * Compute star visibility based on hour.
    * @param {number} timeOfDay
    * @returns {number}
-   * @private
-   * @ignore
    */
   _computeStarVisibility(timeOfDay) {
     const hour = ((timeOfDay % 24) + 24) % 24
@@ -254,8 +244,6 @@ export class SkyRenderer {
    * @param {number} size
    * @param {number} opacity
    * @returns {THREE.Points}
-   * @private
-   * @ignore
    */
   _buildStarPoints(count, radius, color, size, opacity) {
     const positions = new Float32Array(count * 3)
@@ -293,8 +281,6 @@ export class SkyRenderer {
   /**
    * Keep starfield centered on camera to avoid translation parallax.
    * @returns {void}
-   * @private
-   * @ignore
    */
   _syncStarFieldToCamera() {
     if (!this.starField || !this.starFieldBright) {
@@ -311,8 +297,6 @@ export class SkyRenderer {
    * @param {number} rightColor
    * @param {number} alpha
    * @returns {THREE.Color}
-   * @private
-   * @ignore
    */
   _lerpColor(leftColor, rightColor, alpha) {
     const color = new THREE.Color(leftColor)
@@ -325,8 +309,6 @@ export class SkyRenderer {
    * Convert THREE color to RGB object.
    * @param {THREE.Color} color
    * @returns {{r: number, g: number, b: number}}
-   * @private
-   * @ignore
    */
   _colorToRgb(color) {
     return {
