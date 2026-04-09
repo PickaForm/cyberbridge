@@ -916,8 +916,8 @@
     "color": {
       "label": "Rain Color",
       "type": "color",
-      "default": "7aa7d6",
-      "current": "7aa7d6"
+      "default": "cbb8ff",
+      "current": "cbb8ff"
     },
     "intensity": {
       "label": "Rain Intensity",
@@ -934,8 +934,8 @@
       "min": 0,
       "max": 5000,
       "step": 10,
-      "default": 900,
-      "current": 900
+      "default": 100,
+      "current": 100
     },
     "xSpan": {
       "label": "Rain X Span",
@@ -943,8 +943,8 @@
       "min": 50,
       "max": 2000,
       "step": 1,
-      "default": 760,
-      "current": 760
+      "default": 300,
+      "current": 300
     },
     "yMin": {
       "label": "Rain Y Min",
@@ -952,8 +952,8 @@
       "min": -200,
       "max": 400,
       "step": 1,
-      "default": 32,
-      "current": 32
+      "default": -100,
+      "current": -100
     },
     "yMax": {
       "label": "Rain Y Max",
@@ -961,35 +961,35 @@
       "min": -200,
       "max": 500,
       "step": 1,
-      "default": 190,
-      "current": 190
+      "default": 60,
+      "current": 60
     },
     "chunkZRangeMultiplier": {
       "label": "Rain Z Range Multiplier",
       "type": "number",
       "min": 0.1,
       "max": 3,
-      "step": 0.01,
-      "default": 0.56,
-      "current": 0.56
+      "step": 0.1,
+      "default": 0.1,
+      "current": 0.1
     },
     "dropWidthMin": {
       "label": "Drop Width Min",
       "type": "number",
       "min": 0.05,
       "max": 4,
-      "step": 0.01,
-      "default": 0.65,
-      "current": 0.65
+      "step": 0.05,
+      "default": 4,
+      "current": 4
     },
     "dropWidthMax": {
       "label": "Drop Width Max",
       "type": "number",
       "min": 0.05,
       "max": 6,
-      "step": 0.01,
-      "default": 1.5,
-      "current": 1.5
+      "step": 0.05,
+      "default": 6,
+      "current": 6
     },
     "dropStretchMin": {
       "label": "Drop Stretch Min",
@@ -997,8 +997,8 @@
       "min": 0.1,
       "max": 20,
       "step": 0.1,
-      "default": 2.8,
-      "current": 2.8
+      "default": 2,
+      "current": 2
     },
     "dropStretchMax": {
       "label": "Drop Stretch Max",
@@ -1006,62 +1006,62 @@
       "min": 0.1,
       "max": 30,
       "step": 0.1,
-      "default": 9.6,
-      "current": 9.6
+      "default": 5,
+      "current": 5
     },
     "fallSpeedMin": {
       "label": "Fall Speed Min",
       "type": "number",
       "min": 0,
       "max": 500,
-      "step": 0.1,
-      "default": 50,
-      "current": 50
+      "step": 1,
+      "default": 100,
+      "current": 100
     },
     "fallSpeedMax": {
       "label": "Fall Speed Max",
       "type": "number",
       "min": 0,
       "max": 500,
-      "step": 0.1,
-      "default": 100,
-      "current": 100
+      "step": 1,
+      "default": 200,
+      "current": 200
     },
     "driftAmplitudeMin": {
       "label": "Drift Amplitude Min",
       "type": "number",
       "min": 0,
       "max": 150,
-      "step": 0.1,
-      "default": 6,
-      "current": 6
+      "step": 1,
+      "default": 0,
+      "current": 0
     },
     "driftAmplitudeMax": {
       "label": "Drift Amplitude Max",
       "type": "number",
       "min": 0,
       "max": 200,
-      "step": 0.1,
-      "default": 17,
-      "current": 17
+      "step": 1,
+      "default": 0,
+      "current": 0
     },
     "driftSpeedMin": {
       "label": "Drift Speed Min",
       "type": "number",
       "min": 0,
-      "max": 10,
-      "step": 0.01,
-      "default": 0.45,
-      "current": 0.45
+      "max": 20,
+      "step": 0.1,
+      "default": 0,
+      "current": 0
     },
     "driftSpeedMax": {
       "label": "Drift Speed Max",
       "type": "number",
       "min": 0,
-      "max": 12,
-      "step": 0.01,
-      "default": 1.55,
-      "current": 1.55
+      "max": 20,
+      "step": 0.1,
+      "default": 0.3,
+      "current": 0.3
     },
     "tiltXMin": {
       "label": "Tilt X Min",
@@ -1069,8 +1069,8 @@
       "min": -3.14,
       "max": 3.14,
       "step": 0.01,
-      "default": -0.3,
-      "current": -0.3
+      "default": 0,
+      "current": 0
     },
     "tiltXMax": {
       "label": "Tilt X Max",
@@ -1078,8 +1078,8 @@
       "min": -3.14,
       "max": 3.14,
       "step": 0.01,
-      "default": -0.1,
-      "current": -0.1
+      "default": 0,
+      "current": 0
     },
     "tiltZMin": {
       "label": "Tilt Z Min",
@@ -1087,8 +1087,8 @@
       "min": -3.14,
       "max": 3.14,
       "step": 0.01,
-      "default": -0.15,
-      "current": -0.15
+      "default": 0,
+      "current": 0
     },
     "tiltZMax": {
       "label": "Tilt Z Max",
@@ -1096,35 +1096,35 @@
       "min": -3.14,
       "max": 3.14,
       "step": 0.01,
-      "default": 0.15,
-      "current": 0.15
+      "default": 0,
+      "current": 0
     },
     "wrapPadding": {
       "label": "Vertical Wrap Padding",
       "type": "number",
       "min": 0,
-      "max": 300,
+      "max": 100,
       "step": 1,
-      "default": 36,
-      "current": 36
+      "default": 0,
+      "current": 0
     },
     "opacityMin": {
       "label": "Rain Opacity Min",
       "type": "number",
       "min": 0,
       "max": 1,
-      "step": 0.001,
-      "default": 0.06,
-      "current": 0.06
+      "step": 0.1,
+      "default": 1,
+      "current": 1
     },
     "opacityMax": {
       "label": "Rain Opacity Max",
       "type": "number",
       "min": 0,
       "max": 1,
-      "step": 0.001,
-      "default": 0.38,
-      "current": 0.38
+      "step": 0.1,
+      "default": 1,
+      "current": 1
     }
   },
   "world": {
@@ -1133,9 +1133,9 @@
       "type": "number",
       "min": 0,
       "max": 24,
-      "step": 0.1,
-      "default": 19.7,
-      "current": 19.7
+      "step": 1,
+      "default": 19,
+      "current": 19
     },
     "walkwayColor": {
       "label": "Walkway Color",
