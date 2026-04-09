@@ -601,6 +601,7 @@ class CyberStreet {
     const shouldRecreateProceduralCity = this._hasLiveSectionChanged(profile, "buildings") ||
       this._hasLiveSectionChanged(profile, "stands") ||
       this._hasLiveSectionChanged(profile, "clouds") ||
+      this._hasLiveSectionChanged(profile, "rain") ||
       this._hasLiveSectionChanged(profile, "world")
     const shouldRecreateCrowd = this._hasLiveSectionChanged(profile, "crowd") || this._hasLiveSectionChanged(profile, "buildings")
     const shouldRecreateFlyingCars = this._hasLiveSectionChanged(profile, "flyingCars")

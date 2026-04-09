@@ -25,7 +25,7 @@ export class DevPalette {
     this.levelDefinition = this._normalizeLevelDefinition(this.onLevelDefinitionRequest?.() ?? null)
     this.liveApplyTimeoutId = null
     this.gameRulesSectionKey = "gameRules"
-    this.sectionOrder = ["player", "crowd", "hit", "flyingCars", "buildings", "walkway", "stands", "clouds", "world", "sound"]
+    this.sectionOrder = ["player", "crowd", "hit", "flyingCars", "buildings", "walkway", "stands", "clouds", "rain", "world", "sound"]
     this.sectionLabels = {
       player: "player",
       crowd: "crowd",
@@ -36,6 +36,7 @@ export class DevPalette {
       walkway: "walkway",
       stands: "stands",
       clouds: "clouds",
+      rain: "rain",
       world: "world"
     }
     this.sectionStateStorageKey = "cyberlove-dev-palette-sections-v1"

@@ -64,6 +64,18 @@ function _createTextures() {
  * @returns {Record<string, THREE.Material>}
  */
 function _createMaterials(textures) {
+  const rainIntensity = THREE.MathUtils.clamp(
+    getRuntimeTuningNumber("rain.intensity", getRuntimeTuningNumber("world.rainIntensity", 0.35)),
+    0,
+    1
+  )
+  const rainOpacityMin = getRuntimeTuningNumber("rain.opacityMin", 0.06)
+  const rainOpacityMax = getRuntimeTuningNumber("rain.opacityMax", 0.38)
+  const rainOpacity = THREE.MathUtils.clamp(
+    THREE.MathUtils.lerp(Math.min(rainOpacityMin, rainOpacityMax), Math.max(rainOpacityMin, rainOpacityMax), rainIntensity),
+    0,
+    1
+  )
   const walkwayColorHex = getRuntimeTuningColor(
     "world.walkwayColor",
     getRuntimeTuningColor("buildings.walkwayColor", 0x98a4b5)
@@ -149,6 +161,13 @@ function _createMaterials(textures) {
       transparent: true,
       opacity: getRuntimeTuningNumber("clouds.mistOpacity", 0.014),
       alphaTest: 0,
+      depthWrite: false,
+      fog: true
+    }),
+    rainDrop: new THREE.MeshBasicMaterial({
+      color: getRuntimeTuningColor("rain.color", getRuntimeTuningColor("world.rainColor", 0x7aa7d6)),
+      transparent: true,
+      opacity: rainOpacity,
       depthWrite: false,
       fog: true
     }),
@@ -314,6 +333,7 @@ function _createGeometries() {
     signPanel: new THREE.BoxGeometry(1, 1, 0.26),
     windowPanel: new THREE.BoxGeometry(0.7, 1.15, 0.08),
     cloudMist: new THREE.CircleGeometry(1, 24),
+    rainDrop: new THREE.BoxGeometry(0.03, 1, 0.03),
     stand: new THREE.BoxGeometry(1, 1, 1)
   }
 }

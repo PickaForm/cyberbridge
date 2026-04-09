@@ -14,6 +14,7 @@ import { WalkwayGenerator } from "./city/walkwayGenerator.js"
 import { BuildingsGenerator } from "./city/buildingsGenerator.js"
 import { StandsGenerator } from "./city/standsGenerator.js"
 import { CloudsGenerator } from "./city/cloudsGenerator.js"
+import { RainGenerator } from "./city/rainGenerator.js"
 
 export class ProceduralCity {
   /**
@@ -27,6 +28,7 @@ export class ProceduralCity {
     this.buildingsGenerator = new BuildingsGenerator(this.resources)
     this.standsGenerator = new StandsGenerator(this.resources)
     this.cloudsGenerator = new CloudsGenerator(this.resources)
+    this.rainGenerator = new RainGenerator(this.resources)
     this.hasDisposedResources = false
     this.buildingMaterialProfiles = this._createBuildingMaterialProfiles()
   }
@@ -137,6 +139,7 @@ export class ProceduralCity {
     const walkwayClearanceZone = this.walkwayGenerator.build(chunkGroup)
     this.buildingsGenerator.build(chunkGroup, rng, walkwayClearanceZone)
     this.cloudsGenerator.build(chunkGroup, rng)
+    this.rainGenerator.build(chunkGroup, rng)
     this.standsGenerator.build(chunkGroup, rng)
 
     return chunkGroup
