@@ -1196,8 +1196,8 @@
       "min": 1,
       "max": 120,
       "step": 0.5,
-      "default": 5,
-      "current": 5
+      "default": 8,
+      "current": 8
     }
   }
 }
