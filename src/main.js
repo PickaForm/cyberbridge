@@ -254,6 +254,7 @@ class CyberStreet {
    */
   _startDemoMode() {
     this.currentLevelIndex = 0
+    this.audioSystem.requestMusicStart()
     const levelDefinition = this._getCurrentLevelDefinition()
     const levelRuntimeProfile = this._buildLevelRuntimeProfile(levelDefinition)
     this._applyRuntimeProfile(levelRuntimeProfile, false)

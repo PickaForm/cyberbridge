@@ -105,6 +105,14 @@ export class AudioSystem {
   }
 
   /**
+   * Try to start music immediately when entering non-interactive states like demo mode.
+   * @returns {void}
+   */
+  requestMusicStart() {
+    this._startMusicPlaybackWithRetry()
+  }
+
+  /**
    * Play one hit SFX instance.
    * @returns {void}
    */
