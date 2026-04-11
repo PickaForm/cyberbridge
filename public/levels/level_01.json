@@ -137,13 +137,44 @@
       "mistLayerSizeMax": 660,
       "mistLayerXSpan": 400
     },
+    "rain": {
+      "color": "cbb8ff",
+      "intensity": 0,
+      "maxDropCount": 100,
+      "xSpan": 300,
+      "yMin": -100,
+      "yMax": 60,
+      "chunkZRangeMultiplier": 0.1,
+      "dropWidthMin": 4,
+      "dropWidthMax": 6,
+      "dropStretchMin": 2,
+      "dropStretchMax": 5,
+      "fallSpeedMin": 100,
+      "fallSpeedMax": 200,
+      "driftAmplitudeMin": 0,
+      "driftAmplitudeMax": 0,
+      "driftSpeedMin": 0,
+      "driftSpeedMax": 0.3,
+      "tiltXMin": 0,
+      "tiltXMax": 0,
+      "tiltZMin": 0,
+      "tiltZMax": 0,
+      "wrapPadding": 0,
+      "opacityMin": 1,
+      "opacityMax": 1
+    },
     "world": {
       "timeOfDay": 2.9,
       "walkwayColor": "98a4b5",
+      "walkwayOpacity": 0.9,
       "buildingBaseColor": "101723",
       "buildingBaseColorSharePercent": 100,
       "fogColor": "1f3d60",
       "groundColor": "1100ff"
+    },
+    "demoMode": {
+      "autoForwardSpeed": 100,
+      "levelSwitchIntervalSeconds": 5
     }
   }
 }

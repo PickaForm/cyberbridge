@@ -166,10 +166,15 @@
     "world": {
       "timeOfDay": 0,
       "walkwayColor": "b61182",
+      "walkwayOpacity": 0.85,
       "buildingBaseColor": "00e1ff",
       "buildingBaseColorSharePercent": 96,
       "fogColor": "160052",
       "groundColor": "3e848e"
+    },
+    "demoMode": {
+      "autoForwardSpeed": 100,
+      "levelSwitchIntervalSeconds": 5
     }
   }
 }

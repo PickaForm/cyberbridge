@@ -81,6 +81,29 @@ export class PlayerController {
   }
 
   /**
+   * Advance forward at a fixed world speed without consuming input.
+   * @param {number} deltaTime
+   * @param {number} forwardSpeed
+   * @returns {void}
+   */
+  forceAutoForward(deltaTime, forwardSpeed) {
+    this._updateWalkwayBasisFromCamera()
+    this.inputState.forward = 0
+    this.inputState.strafe = 0
+    this.velocity.forward = 1
+    this.velocity.strafe = 0
+    const safeForwardSpeed = Math.max(0, Number(forwardSpeed) || 0)
+    const forwardDistance = safeForwardSpeed * deltaTime
+    this.position.x += this.forwardVector.x * forwardDistance
+    this.position.z += this.forwardVector.z * forwardDistance
+
+    const xLimit = gameConfig.world.walkwayWidth * 0.5 - gameConfig.player.xMargin
+    this.position.x = THREE.MathUtils.clamp(this.position.x, -xLimit, xLimit)
+    this._updateJumpPhysics(deltaTime)
+    this.playerRenderer.setPosition(this.position.x, this.position.y, this.position.z)
+  }
+
+  /**
    * Reset player movement state and teleport to a target position.
    * @param {THREE.Vector3} nextPosition
    * @returns {void}

@@ -74,8 +74,9 @@ class CyberStreet {
     this.levelElapsedMs = 0
     this.levels = this._resolveLevels(levels)
     this.currentLevelIndex = 0
-    this.gameState = "intro"
+    this.gameState = "demo"
     this.pendingResult = null
+    this.demoLevelSwitchElapsedSeconds = 0
     this.scoreElement = document.getElementById("scoreValue")
     this.distanceElement = document.getElementById("distanceValue")
     this.chronoHudElement = document.getElementById("chronoHud")
@@ -87,6 +88,7 @@ class CyberStreet {
     this.levelOverlayTextElement = document.getElementById("levelOverlayText")
     this.levelOverlayHintElement = document.getElementById("levelOverlayHint")
     this.levelOverlayActionElement = document.getElementById("levelOverlayAction")
+    this.insertCoinOverlayElement = document.getElementById("insertCoinOverlay")
     this.startPlayerPosition = this.player.mesh.position.clone()
     this.proceduralCity.applyDayNightProfile(this.rendererApp.getSkyProfile())
     this.baseRuntimeProfile = tuningManager.getProfileClone()
@@ -99,7 +101,7 @@ class CyberStreet {
     this._renderDistance(this.player.mesh.position)
     this._renderChronoHud()
     this._bindLevelOverlayEvents()
-    this._startCurrentLevel()
+    this._startDemoMode()
     this._bindInteractionHandlers()
     this._bindInteractionEvents()
     this.audioSystem.attachUnlockListeners(window)
@@ -241,6 +243,25 @@ class CyberStreet {
   }
 
   /**
+   * Start arcade demo mode with auto-forward movement and rotating level visuals.
+   * @returns {void}
+   */
+  _startDemoMode() {
+    this.currentLevelIndex = 0
+    const levelDefinition = this._getCurrentLevelDefinition()
+    const levelRuntimeProfile = this._buildLevelRuntimeProfile(levelDefinition)
+    this._applyRuntimeProfile(levelRuntimeProfile, false)
+    this._resetPlayerAndSystemsForLevel()
+    this._resetRunStats()
+    this.gameState = "demo"
+    this.pendingResult = null
+    this.demoLevelSwitchElapsedSeconds = 0
+    this._hideOverlay()
+    this._setInsertCoinVisibility(true)
+    this.lastFrameTime = performance.now()
+  }
+
+  /**
    * Return the active level definition.
    * @returns {object}
    */
@@ -378,6 +399,11 @@ class CyberStreet {
    * @returns {void}
    */
   _startGameplay() {
+    if (this.gameState === "demo") {
+      this._exitDemoModeAndStartGameplay()
+      return
+    }
+
     if (this.gameState !== "intro") {
       return
     }
@@ -388,6 +414,20 @@ class CyberStreet {
     this._renderChronoHud()
     this._hideOverlay()
     this.lastFrameTime = performance.now()
+  }
+
+  /**
+   * Exit demo mode and enter active gameplay from level intro.
+   * @returns {void}
+   */
+  _exitDemoModeAndStartGameplay() {
+    if (this.gameState !== "demo") {
+      return
+    }
+
+    this._setInsertCoinVisibility(false)
+    this.currentLevelIndex = 0
+    this._startCurrentLevel()
   }
 
   /**
@@ -576,6 +616,19 @@ class CyberStreet {
   }
 
   /**
+   * Toggle INSERT COIN overlay visibility.
+   * @param {boolean} isVisible
+   * @returns {void}
+   */
+  _setInsertCoinVisibility(isVisible) {
+    if (!this.insertCoinOverlayElement) {
+      return
+    }
+
+    this.insertCoinOverlayElement.classList.toggle("insert-coin-hidden", !isVisible)
+  }
+
+  /**
    * Apply tuning profile live and refresh dynamic systems.
    * @param {object} profile
    * @returns {void}
@@ -624,6 +677,53 @@ class CyberStreet {
     if (shouldPersistAsBaseProfile) {
       this.baseRuntimeProfile = this._cloneProfile(profile)
     }
+  }
+
+  /**
+   * Apply only world-generation sections from a level without resetting player/systems state.
+   * @param {object} levelDefinition
+   * @returns {void}
+   */
+  _applyDemoVisualLevelSwitch(levelDefinition) {
+    const nextProfile = this._cloneProfile(this.lastLiveProfile)
+    const levelRuntimeProfile = this._buildLevelRuntimeProfile(levelDefinition)
+    const demoSwitchSections = ["buildings", "stands", "clouds", "rain", "world", "crowd", "flyingCars"]
+    for (const sectionKey of demoSwitchSections) {
+      if (!levelRuntimeProfile[sectionKey]) {
+        continue
+      }
+      nextProfile[sectionKey] = levelRuntimeProfile[sectionKey]
+    }
+
+    this._applyRuntimeProfile(nextProfile, false)
+  }
+
+  /**
+   * Update demo mode simulation with fixed forward speed and periodic level visual switch.
+   * @param {number} deltaTime
+   * @returns {void}
+   */
+  _updateDemoMode(deltaTime) {
+    const demoForwardSpeed = Math.max(0, Number(this.lastLiveProfile?.demoMode?.autoForwardSpeed?.current ?? 10))
+    this.player.forceAutoForward(deltaTime, demoForwardSpeed)
+    this._renderDistance(this.player.mesh.position)
+    this.isHitCountingEnabledForFrame = false
+    this._renderChronoHud()
+
+    this.demoLevelSwitchElapsedSeconds += deltaTime
+    const switchIntervalSeconds = Math.max(1, Number(this.lastLiveProfile?.demoMode?.levelSwitchIntervalSeconds?.current ?? 8))
+    if (this.demoLevelSwitchElapsedSeconds >= switchIntervalSeconds) {
+      this.demoLevelSwitchElapsedSeconds = 0
+      if (this.levels.length > 0) {
+        this.currentLevelIndex = (this.currentLevelIndex + 1) % this.levels.length
+      }
+      this._applyDemoVisualLevelSwitch(this._getCurrentLevelDefinition())
+    }
+
+    this.proceduralCity.update(this.player.mesh.position.z)
+    this.crowd.update(deltaTime, this.player.mesh.position, this.player.forwardVector.z)
+    this.flyingCars.update(deltaTime, this.player.mesh.position)
+    this.cameraRig.update(deltaTime)
   }
 
   /**
@@ -902,6 +1002,11 @@ class CyberStreet {
    * @returns {void}
    */
   _onPointerDown(event) {
+    if (this.gameState === "demo") {
+      this._startGameplay()
+      return
+    }
+
     this.audioSystem.notifyUserGesture()
     if (event.button !== 0) {
       return
@@ -962,6 +1067,11 @@ class CyberStreet {
    * @returns {void}
    */
   _onCanvasClick(event) {
+    if (this.gameState === "demo") {
+      this._startGameplay()
+      return
+    }
+
     this.audioSystem.notifyUserGesture()
     const now = performance.now()
     if (now - this.pointerInteractionState.lastInteractionTs < 120) {
@@ -1091,7 +1201,9 @@ class CyberStreet {
     const deltaTime = Math.min(0.05, (now - this.lastFrameTime) / 1000)
     this.lastFrameTime = now
 
-    if (this.gameState === "playing") {
+    if (this.gameState === "demo") {
+      this._updateDemoMode(deltaTime)
+    } else if (this.gameState === "playing") {
       const previousMaxDistance = this.maxDistanceMeters
       this.player.update(deltaTime)
       this.levelElapsedMs += deltaTime * 1000
