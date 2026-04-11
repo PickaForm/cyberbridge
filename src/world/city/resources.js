@@ -80,6 +80,7 @@ function _createMaterials(textures) {
     "world.walkwayColor",
     getRuntimeTuningColor("buildings.walkwayColor", 0x98a4b5)
   )
+  const walkwayOpacity = THREE.MathUtils.clamp(getRuntimeTuningNumber("world.walkwayOpacity", 1), 0, 1)
   const walkwayColor = new THREE.Color(walkwayColorHex)
   const walkwayEmissive = walkwayColor.clone().multiplyScalar(0.22).lerp(new THREE.Color(0x10121a), 0.25)
   const guardrailColor = walkwayColor.clone().lerp(new THREE.Color(0xffffff), 0.16)
@@ -96,6 +97,8 @@ function _createMaterials(textures) {
       color: walkwayColor,
       emissive: walkwayEmissive,
       emissiveIntensity: 0.72,
+      transparent: walkwayOpacity < 1,
+      opacity: walkwayOpacity,
       roughness: 0.55,
       metalness: 0.32
     }),

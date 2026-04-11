@@ -1143,6 +1143,15 @@
       "default": "98a4b5",
       "current": "98a4b5"
     },
+    "walkwayOpacity": {
+      "label": "Walkway Opacity",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 1,
+      "current": 1
+    },
     "buildingBaseColor": {
       "label": "Building Base Color",
       "type": "color",
