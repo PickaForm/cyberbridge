@@ -275,6 +275,15 @@
       "default": 1.85,
       "current": 1.85
     },
+    "spawnMinGap": {
+      "label": "Spawn Min Gap",
+      "type": "number",
+      "min": 1,
+      "max": 20,
+      "step": 0.1,
+      "default": 3.4,
+      "current": 3.4
+    },
     "laneChangeCooldown": {
       "label": "Lane Change Cooldown",
       "type": "number",
@@ -1149,8 +1158,8 @@
       "min": 0,
       "max": 1,
       "step": 0.01,
-      "default": 1,
-      "current": 1
+      "default": 0.9,
+      "current": 0.9
     },
     "buildingBaseColor": {
       "label": "Building Base Color",

@@ -45,6 +45,7 @@ export const gameConfig = {
     rearYieldSpeedThreshold: 1.05,
     laneEnterClearance: 2.25,
     minForwardGap: 1.85,
+    spawnMinGap: 3.4,
     laneChangeCooldown: 0.9,
     simulationHz: 20,
     maxSimulationStepsPerFrame: 3,

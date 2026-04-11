@@ -53,6 +53,7 @@
       "rearYieldSpeedThreshold": 1.05,
       "laneEnterClearance": 2.25,
       "minForwardGap": 1.85,
+      "spawnMinGap": 3.4,
       "laneChangeCooldown": 0.9,
       "simulationHz": 10,
       "maxSimulationStepsPerFrame": 3,
@@ -79,7 +80,7 @@
       "maxCars": 50,
       "spawnDistance": 200,
       "renderClipDistance": 200,
-      "speed": 100,
+      "speed": 150,
       "scale": 2,
       "lanesPerDirection": 3,
       "levelsCount": 3,
@@ -171,10 +172,6 @@
       "buildingBaseColorSharePercent": 100,
       "fogColor": "1f3d60",
       "groundColor": "1100ff"
-    },
-    "demoMode": {
-      "autoForwardSpeed": 100,
-      "levelSwitchIntervalSeconds": 5
     }
   }
 }

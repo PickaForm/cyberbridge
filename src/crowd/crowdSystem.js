@@ -175,7 +175,7 @@ export class CrowdSystem {
       const laneIndex = this._randomNpcLaneIndex()
       const direction = Math.random() > 0.5 ? 1 : -1
       const baseSpeed = this._getRandomBaseSpeed()
-      const z = (Math.random() - 0.5) * gameConfig.crowd.spawnDistance * 2
+      const z = this._resolveInitialSpawnZWithSpacing(laneIndex)
       const agent = this._createAgent(laneIndex, direction, baseSpeed, z, agentIndex)
       this.agents.push(agent)
       this._syncAgentBodyColor(agent)
@@ -909,9 +909,9 @@ export class CrowdSystem {
     agent.isHitActive = false
     agent.hitState = null
     agent.hitSpinVelocityY = 0
-    agent.z = playerZ + directionShift * (maxDistance - Math.random() * 24)
     agent.y = this.walkwayTopY
     agent.laneIndex = this._randomNpcLaneIndex()
+    agent.z = this._resolveRespawnZWithSpacing(playerZ, directionShift, agent.laneIndex, agent.id)
     agent.direction = Math.random() > 0.5 ? 1 : -1
     const speedProfile = this._createSpeedProfile(this._getRandomBaseSpeed())
     agent.baseSpeed = speedProfile.baseSpeed
@@ -947,6 +947,118 @@ export class CrowdSystem {
     agent.previousRotationZ = 0
     this._syncAgentBodyColor(agent)
     this._syncAgentAppearance(agent)
+  }
+
+  /**
+   * Resolve one initial spawn z while preserving minimum same-lane spacing.
+   * @param {number} laneIndex
+   * @returns {number}
+   */
+  _resolveInitialSpawnZWithSpacing(laneIndex) {
+    const spawnDistance = Math.max(1, gameConfig.crowd.spawnDistance)
+    return this._resolveSpawnZWithSpacing({
+      laneIndex,
+      minZ: -spawnDistance,
+      maxZ: spawnDistance
+    })
+  }
+
+  /**
+   * Resolve one respawn z with a broad range to avoid visible spawn waves.
+   * @param {number} playerZ
+   * @param {number} directionShift
+   * @param {number} laneIndex
+   * @param {number} ignoredAgentId
+   * @returns {number}
+   */
+  _resolveRespawnZWithSpacing(playerZ, directionShift, laneIndex, ignoredAgentId) {
+    const spawnDistance = Math.max(1, gameConfig.crowd.spawnDistance)
+    const minSpawnDistance = Math.min(spawnDistance, Math.max(24, spawnDistance * 0.55))
+    const maxSpawnDistance = spawnDistance
+    const minZ = playerZ + directionShift * minSpawnDistance
+    const maxZ = playerZ + directionShift * maxSpawnDistance
+    const lowerZ = Math.min(minZ, maxZ)
+    const upperZ = Math.max(minZ, maxZ)
+
+    return this._resolveSpawnZWithSpacing({
+      laneIndex,
+      minZ: lowerZ,
+      maxZ: upperZ,
+      ignoredAgentId
+    })
+  }
+
+  /**
+   * Resolve one spawn z with retry + fallback while enforcing same-lane spacing.
+   * @param {{laneIndex: number, minZ: number, maxZ: number, ignoredAgentId?: number}} options
+   * @returns {number}
+   */
+  _resolveSpawnZWithSpacing(options) {
+    const { laneIndex, minZ, maxZ, ignoredAgentId = -1 } = options
+    const safeMinZ = Math.min(minZ, maxZ)
+    const safeMaxZ = Math.max(minZ, maxZ)
+    const minSpawnGap = this._getSpawnMinGap()
+    const maxAttempts = 20
+
+    for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex += 1) {
+      const candidateZ = THREE.MathUtils.randFloat(safeMinZ, safeMaxZ)
+      if (!this._isSpawnZTooCloseOnLane(laneIndex, candidateZ, minSpawnGap, ignoredAgentId)) {
+        return candidateZ
+      }
+    }
+
+    let fallbackZ = THREE.MathUtils.randFloat(safeMinZ, safeMaxZ)
+    const span = Math.max(0.001, safeMaxZ - safeMinZ)
+    const fallbackStep = Math.max(minSpawnGap * 0.9, span / 10)
+    for (let stepIndex = 0; stepIndex < 24; stepIndex += 1) {
+      if (!this._isSpawnZTooCloseOnLane(laneIndex, fallbackZ, minSpawnGap, ignoredAgentId)) {
+        return fallbackZ
+      }
+      fallbackZ += fallbackStep
+      if (fallbackZ > safeMaxZ) {
+        fallbackZ = safeMinZ + (fallbackZ - safeMaxZ)
+      }
+    }
+
+    return fallbackZ
+  }
+
+  /**
+   * Check whether one spawn z violates minimum spacing on a lane.
+   * @param {number} laneIndex
+   * @param {number} candidateZ
+   * @param {number} minSpawnGap
+   * @param {number} ignoredAgentId
+   * @returns {boolean}
+   */
+  _isSpawnZTooCloseOnLane(laneIndex, candidateZ, minSpawnGap, ignoredAgentId = -1) {
+    for (const neighbor of this.agents) {
+      if (neighbor.id === ignoredAgentId) {
+        continue
+      }
+      if (neighbor.isHitActive) {
+        continue
+      }
+      if (neighbor.laneIndex !== laneIndex) {
+        continue
+      }
+      if (Math.abs(neighbor.z - candidateZ) < minSpawnGap) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * Resolve spawn spacing baseline from current crowd collision constraints.
+   * @returns {number}
+   */
+  _getSpawnMinGap() {
+    const explicitSpawnMinGap = Math.max(0, Number(gameConfig.crowd.spawnMinGap) || 0)
+    const forwardGap = Math.max(0, gameConfig.crowd.minForwardGap)
+    const laneClearance = Math.max(0, gameConfig.crowd.laneEnterClearance)
+    return Math.max(2.6, explicitSpawnMinGap, forwardGap * 1.8, laneClearance * 1.4)
   }
 
   /**

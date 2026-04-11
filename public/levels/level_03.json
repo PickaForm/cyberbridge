@@ -171,10 +171,6 @@
       "buildingBaseColorSharePercent": 100,
       "fogColor": "352003",
       "groundColor": "1100ff"
-    },
-    "demoMode": {
-      "autoForwardSpeed": 100,
-      "levelSwitchIntervalSeconds": 5
     }
   }
 }

@@ -89,6 +89,10 @@ class CyberStreet {
     this.levelOverlayHintElement = document.getElementById("levelOverlayHint")
     this.levelOverlayActionElement = document.getElementById("levelOverlayAction")
     this.insertCoinOverlayElement = document.getElementById("insertCoinOverlay")
+    this.helpHudElement = document.getElementById("hud")
+    this.scoreHudElement = document.getElementById("scoreHud")
+    this.demoHiddenHelpHudDisplay = null
+    this.demoHiddenScoreHudDisplay = null
     this.startPlayerPosition = this.player.mesh.position.clone()
     this.proceduralCity.applyDayNightProfile(this.rendererApp.getSkyProfile())
     this.baseRuntimeProfile = tuningManager.getProfileClone()
@@ -234,6 +238,8 @@ class CyberStreet {
    * @returns {void}
    */
   _startCurrentLevel() {
+    this._setInsertCoinVisibility(false)
+    this._setDemoHudVisibility(false)
     const levelDefinition = this._getCurrentLevelDefinition()
     const levelRuntimeProfile = this._buildLevelRuntimeProfile(levelDefinition)
     this._applyRuntimeProfile(levelRuntimeProfile, false)
@@ -258,6 +264,7 @@ class CyberStreet {
     this.demoLevelSwitchElapsedSeconds = 0
     this._hideOverlay()
     this._setInsertCoinVisibility(true)
+    this._setDemoHudVisibility(true)
     this.lastFrameTime = performance.now()
   }
 
@@ -626,6 +633,40 @@ class CyberStreet {
     }
 
     this.insertCoinOverlayElement.classList.toggle("insert-coin-hidden", !isVisible)
+  }
+
+  /**
+   * Toggle HUD visibility for demo mode while preserving previous inline display styles.
+   * @param {boolean} isDemoModeEnabled
+   * @returns {void}
+   */
+  _setDemoHudVisibility(isDemoModeEnabled) {
+    if (isDemoModeEnabled) {
+      if (this.helpHudElement) {
+        if (this.demoHiddenHelpHudDisplay === null) {
+          this.demoHiddenHelpHudDisplay = this.helpHudElement.style.display
+        }
+        this.helpHudElement.style.display = "none"
+      }
+
+      if (this.scoreHudElement) {
+        if (this.demoHiddenScoreHudDisplay === null) {
+          this.demoHiddenScoreHudDisplay = this.scoreHudElement.style.display
+        }
+        this.scoreHudElement.style.display = "none"
+      }
+      return
+    }
+
+    if (this.helpHudElement && this.demoHiddenHelpHudDisplay !== null) {
+      this.helpHudElement.style.display = this.demoHiddenHelpHudDisplay
+      this.demoHiddenHelpHudDisplay = null
+    }
+
+    if (this.scoreHudElement && this.demoHiddenScoreHudDisplay !== null) {
+      this.scoreHudElement.style.display = this.demoHiddenScoreHudDisplay
+      this.demoHiddenScoreHudDisplay = null
+    }
   }
 
   /**
@@ -1143,6 +1184,10 @@ class CyberStreet {
     }
 
     for (const [sectionKey, sectionValues] of Object.entries(profile)) {
+      if (sectionKey === "demoMode") {
+        continue
+      }
+
       if (!sectionValues || typeof sectionValues !== "object") {
         continue
       }

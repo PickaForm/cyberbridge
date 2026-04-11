@@ -284,6 +284,7 @@ export class DevTuningManager {
     gameConfig.crowd.rearYieldSpeedThreshold = _asNumber(crowdValues.rearYieldSpeedThreshold, gameConfig.crowd.rearYieldSpeedThreshold)
     gameConfig.crowd.laneEnterClearance = _asNumber(crowdValues.laneEnterClearance, gameConfig.crowd.laneEnterClearance)
     gameConfig.crowd.minForwardGap = _asNumber(crowdValues.minForwardGap, gameConfig.crowd.minForwardGap)
+    gameConfig.crowd.spawnMinGap = Math.max(0, _asNumber(crowdValues.spawnMinGap, gameConfig.crowd.spawnMinGap))
     gameConfig.crowd.laneChangeCooldown = _asNumber(crowdValues.laneChangeCooldown, gameConfig.crowd.laneChangeCooldown)
     gameConfig.crowd.simulationHz = Math.max(1, Math.round(_asNumber(crowdValues.simulationHz, gameConfig.crowd.simulationHz)))
     gameConfig.crowd.maxSimulationStepsPerFrame = Math.max(
