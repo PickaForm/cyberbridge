@@ -1045,6 +1045,7 @@ class CyberStreet {
    */
   _onPointerDown(event) {
     if (this.gameState === "demo") {
+      this.audioSystem.notifyUserGesture()
       this._startGameplay()
       return
     }
@@ -1110,6 +1111,7 @@ class CyberStreet {
    */
   _onCanvasClick(event) {
     if (this.gameState === "demo") {
+      this.audioSystem.notifyUserGesture()
       this._startGameplay()
       return
     }

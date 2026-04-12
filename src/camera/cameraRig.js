@@ -24,6 +24,7 @@ export class CameraRig {
       pitch: gameConfig.camera.pitch,
       distance: gameConfig.camera.defaultDistance
     }
+    this.isMobileTouchDevice = this._isMobileTouchDevice()
     this.orbitTouchPointerId = null
     this.isRightDragging = false
     this.lastPointer = { x: 0, y: 0 }
@@ -47,7 +48,10 @@ export class CameraRig {
     offset.setFromSphericalCoords(this.state.distance, this.state.pitch, this.state.yaw)
     const desiredPosition = targetPosition.clone().add(offset)
 
-    const cameraElasticity = Math.max(0.1, Number(gameConfig.player.cameraElasticity) || 8)
+    const maxCameraElasticity = 30
+    const cameraElasticity = this.isMobileTouchDevice
+      ? maxCameraElasticity
+      : Math.max(0.1, Number(gameConfig.player.cameraElasticity) || 8)
     this.camera.position.lerp(desiredPosition, Math.min(1, deltaTime * cameraElasticity))
     this.camera.lookAt(targetPosition)
   }
@@ -166,6 +170,10 @@ export class CameraRig {
    * @returns {void}
    */
   _onTouchStart(event) {
+    if (this.isMobileTouchDevice) {
+      return
+    }
+
     if (event.touches.length === 2) {
       this.pinchDistance = this._distance2D(event.touches[0], event.touches[1])
       event.preventDefault()
@@ -194,6 +202,10 @@ export class CameraRig {
    * @returns {void}
    */
   _onTouchMove(event) {
+    if (this.isMobileTouchDevice) {
+      return
+    }
+
     if (event.touches.length === 2) {
       const currentPinch = this._distance2D(event.touches[0], event.touches[1])
       const pinchDelta = currentPinch - this.pinchDistance
@@ -231,11 +243,26 @@ export class CameraRig {
    * @returns {void}
    */
   _onTouchEnd(event) {
+    if (this.isMobileTouchDevice) {
+      return
+    }
+
     for (const touch of event.changedTouches) {
       if (touch.identifier === this.orbitTouchPointerId) {
         this.orbitTouchPointerId = null
       }
     }
+  }
+
+  /**
+   * Detect touch-first mobile runtime.
+   * @returns {boolean}
+   */
+  _isMobileTouchDevice() {
+    const hasTouchPoints = Number(navigator?.maxTouchPoints ?? 0) > 0
+    const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false
+    const isMobileViewport = window.matchMedia?.("(max-width: 840px)")?.matches ?? false
+    return hasTouchPoints && isCoarsePointer && isMobileViewport
   }
 
   /**

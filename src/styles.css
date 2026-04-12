@@ -147,10 +147,12 @@ canvas {
 }
 
 .insert-coin-text {
-  font-size: clamp(46px, 10vw, 130px);
+  font-size: clamp(32px, 12vw, 130px);
   line-height: 1;
   font-weight: 800;
   letter-spacing: 0.08em;
+  white-space: nowrap;
+  text-align: center;
   color: #ffe56f;
   text-shadow: 0 0 18px rgba(255, 190, 24, 0.7), 0 0 42px rgba(255, 150, 0, 0.45);
   animation: insert-coin-blink 1.1s steps(1, end) infinite;
@@ -493,6 +495,66 @@ canvas {
 }
 
 @media (max-width: 840px) {
+  #hud {
+    display: none !important;
+  }
+
+  #scoreHud {
+    top: 10px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(560px, calc(100vw - 20px));
+    border-radius: 8px;
+    padding: 6px 12px;
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    justify-items: center;
+    gap: 10px;
+  }
+
+  #scoreValue {
+    font-size: clamp(38px, 10vw, 54px) !important;
+    white-space: nowrap;
+  }
+
+  #distanceValue {
+    font-size: clamp(18px, 4.2vw, 24px) !important;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  #hitsHud {
+    width: auto;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+
+  .hitsLine {
+    font-size: clamp(18px, 4.6vw, 24px);
+    gap: 5px;
+  }
+
+  .hitsSymbol {
+    font-size: clamp(16px, 4vw, 20px);
+  }
+
+  #chronoHud {
+    top: 88px;
+  }
+
+  .insert-coin-overlay {
+    padding: 0 12px;
+    box-sizing: border-box;
+  }
+
+  .insert-coin-text {
+    max-width: 100%;
+  }
+
   #devPalette {
     top: auto;
     bottom: 12px;

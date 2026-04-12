@@ -37,6 +37,7 @@ export class PlayerController {
       strafe: 0
     }
     this.keys = new Map()
+    this.isMobileTouchDevice = this._isMobileTouchDevice()
     this.touchMovePointerId = null
     this.touchMoveStart = { x: 0, y: 0 }
     this.touchMoveCurrent = { x: 0, y: 0 }
@@ -275,6 +276,12 @@ export class PlayerController {
   _onTouchStart(event) {
     const halfWidth = window.innerWidth * 0.5
     for (const touch of event.changedTouches) {
+      if (this.isMobileTouchDevice && touch.clientX > halfWidth) {
+        this.isJumpRequested = true
+        event.preventDefault()
+        continue
+      }
+
       if (touch.clientX > halfWidth) {
         continue
       }
@@ -289,6 +296,17 @@ export class PlayerController {
       event.preventDefault()
       break
     }
+  }
+
+  /**
+   * Detect touch-first mobile runtime.
+   * @returns {boolean}
+   */
+  _isMobileTouchDevice() {
+    const hasTouchPoints = Number(navigator?.maxTouchPoints ?? 0) > 0
+    const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false
+    const isMobileViewport = window.matchMedia?.("(max-width: 840px)")?.matches ?? false
+    return hasTouchPoints && isCoarsePointer && isMobileViewport
   }
 
   /**
