@@ -867,8 +867,20 @@ class CyberStreet {
       return
     }
 
+    const shouldShowScore = this._isScoreTargetActiveForCurrentLevel()
+    this.scoreElement.style.display = shouldShowScore ? "block" : "none"
     this.scoreElement.textContent = String(this.score)
     this._syncHudTypography()
+  }
+
+  /**
+   * Check whether current level uses a positive score target.
+   * @returns {boolean}
+   */
+  _isScoreTargetActiveForCurrentLevel() {
+    const levelDefinition = this._getCurrentLevelDefinition()
+    const targetScore = this._getLevelTargetThreshold(levelDefinition, "score")
+    return targetScore > 0
   }
 
   /**
