@@ -22,6 +22,7 @@ export class ProceduralCity {
    */
   constructor(scene) {
     this.scene = scene
+    this.isMobileTouchDevice = this._isMobileTouchDevice()
     this.chunkMap = new Map()
     this.resources = createCityResources()
     this.walkwayGenerator = new WalkwayGenerator(this.resources)
@@ -41,7 +42,8 @@ export class ProceduralCity {
   update(playerZ) {
     const chunkLength = gameConfig.world.chunkLength
     const playerChunk = Math.floor(playerZ / chunkLength)
-    const minChunk = playerChunk - gameConfig.world.visibleChunksBehind
+    const visibleChunksBehind = this.isMobileTouchDevice ? 0 : gameConfig.world.visibleChunksBehind
+    const minChunk = playerChunk - visibleChunksBehind
     const defaultSpawnDistance = gameConfig.world.visibleChunksAhead * chunkLength
     const defaultRenderClipDistance = gameConfig.world.visibleChunksAhead * chunkLength
     const spawnDistanceInChunks = this._resolveDistanceInChunks("buildings.spawnDistance", defaultSpawnDistance, chunkLength)
@@ -295,5 +297,16 @@ export class ProceduralCity {
    */
   _isNumber(value) {
     return Number.isFinite(value)
+  }
+
+  /**
+   * Detect touch-first mobile runtime.
+   * @returns {boolean}
+   */
+  _isMobileTouchDevice() {
+    const hasTouchPoints = Number(navigator?.maxTouchPoints ?? 0) > 0
+    const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false
+    const isMobileViewport = window.matchMedia?.("(max-width: 840px)")?.matches ?? false
+    return hasTouchPoints && isCoarsePointer && isMobileViewport
   }
 }

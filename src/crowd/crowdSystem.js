@@ -28,6 +28,9 @@ export class CrowdSystem {
     this.laneCenterOffset = laneLayout.centerOffset
     this.npcLaneMin = this.laneCount > 2 ? 1 : 0
     this.npcLaneMax = this.laneCount > 2 ? this.laneCount - 2 : this.laneCount - 1
+    this.isMobileTouchDevice = this._isMobileTouchDevice()
+    this.mobileBehindRenderPadding = 2
+    this.mobileBehindRecycleDistance = 8
     this.crowdRenderer = new CrowdRenderer(scene, gameConfig.crowd.maxAgents)
     this.simulationStep = 1 / gameConfig.crowd.simulationHz
     this.simulationAccumulator = 0
@@ -873,7 +876,9 @@ export class CrowdSystem {
 
     const maxDistance = gameConfig.crowd.spawnDistance
     const dz = agent.z - playerZ
-    if (Math.abs(dz) < maxDistance) {
+    const isBehindMobileClipReached = this.isMobileTouchDevice && dz < -this.mobileBehindRecycleDistance
+    const isOutOfSpawnRange = Math.abs(dz) >= maxDistance
+    if (!isBehindMobileClipReached && !isOutOfSpawnRange) {
       return
     }
 
@@ -1202,7 +1207,8 @@ export class CrowdSystem {
   ) {
     const distanceToPlayer = Math.abs(renderZ - playerPosition.z) + Math.abs(renderX - playerPosition.x) * 0.25
     const clipDistance = Math.max(0, gameConfig.crowd.renderClipDistance)
-    const shouldRenderAgent = distanceToPlayer <= clipDistance
+    const isBehindMobileClipReached = this.isMobileTouchDevice && renderZ < playerPosition.z - this.mobileBehindRenderPadding
+    const shouldRenderAgent = !isBehindMobileClipReached && distanceToPlayer <= clipDistance
     if (!shouldRenderAgent) {
       this.crowdRenderer.setAgentMatrix(agent.instanceIndex, renderX, renderZ, -9999, false)
       return
@@ -1464,5 +1470,16 @@ export class CrowdSystem {
     }
 
     return null
+  }
+
+  /**
+   * Detect touch-first mobile runtime.
+   * @returns {boolean}
+   */
+  _isMobileTouchDevice() {
+    const hasTouchPoints = Number(navigator?.maxTouchPoints ?? 0) > 0
+    const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false
+    const isMobileViewport = window.matchMedia?.("(max-width: 840px)")?.matches ?? false
+    return hasTouchPoints && isCoarsePointer && isMobileViewport
   }
 }

@@ -27,6 +27,9 @@ export class FlyingCarsSystem {
    */
   constructor(scene) {
     this.cars = []
+    this.isMobileTouchDevice = this._isMobileTouchDevice()
+    this.mobileBehindRenderPadding = 4
+    this.mobileBehindRecycleDistance = 10
     this.lanes = this._buildVirtualLanes()
     this.flyingCarsRenderer = new FlyingCarsRenderer(scene, gameConfig.flyingCars.maxCars)
 
@@ -188,7 +191,9 @@ export class FlyingCarsSystem {
     const spawnDistance = Math.max(8, gameConfig.flyingCars.spawnDistance)
     const carScale = this._getCarScale()
     const dz = car.z - playerZ
-    if (Math.abs(dz) < spawnDistance) {
+    const isBehindMobileClipReached = this.isMobileTouchDevice && dz < -this.mobileBehindRecycleDistance
+    const isOutOfSpawnRange = Math.abs(dz) >= spawnDistance
+    if (!isBehindMobileClipReached && !isOutOfSpawnRange) {
       return
     }
 
@@ -316,7 +321,8 @@ export class FlyingCarsSystem {
     const clipDistance = Math.max(0, gameConfig.flyingCars.renderClipDistance)
     const carScale = this._getCarScale()
     const distanceToPlayer = Math.abs(car.z - playerPosition.z) + Math.abs(car.x - playerPosition.x) * 0.22
-    const shouldRender = distanceToPlayer <= clipDistance
+    const isBehindMobileClipReached = this.isMobileTouchDevice && car.z < playerPosition.z - this.mobileBehindRenderPadding
+    const shouldRender = !isBehindMobileClipReached && distanceToPlayer <= clipDistance
     car.appearance.direction = car.direction
     this.flyingCarsRenderer.setCarMatrix(car.instanceIndex, car.x, car.y, car.z, shouldRender, carScale)
   }
@@ -377,5 +383,16 @@ export class FlyingCarsSystem {
   _pickRandomLane() {
     const randomIndex = Math.floor(Math.random() * this.lanes.length)
     return this.lanes[randomIndex]
+  }
+
+  /**
+   * Detect touch-first mobile runtime.
+   * @returns {boolean}
+   */
+  _isMobileTouchDevice() {
+    const hasTouchPoints = Number(navigator?.maxTouchPoints ?? 0) > 0
+    const isCoarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false
+    const isMobileViewport = window.matchMedia?.("(max-width: 840px)")?.matches ?? false
+    return hasTouchPoints && isCoarsePointer && isMobileViewport
   }
 }

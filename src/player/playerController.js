@@ -59,6 +59,9 @@ export class PlayerController {
     const targetStrafe = this.inputState.strafe
     this.velocity.forward = THREE.MathUtils.lerp(this.velocity.forward, targetForward, Math.min(1, deltaTime * 8))
     this.velocity.strafe = THREE.MathUtils.lerp(this.velocity.strafe, targetStrafe, Math.min(1, deltaTime * 8))
+    if (this.isMobileTouchDevice) {
+      this.velocity.forward = Math.max(0, this.velocity.forward)
+    }
 
     this._updateWalkwayBasisFromCamera()
 
@@ -186,6 +189,9 @@ export class PlayerController {
 
     this.inputState.forward = THREE.MathUtils.clamp(keyboardForward + touchForward, -1, 1)
     this.inputState.strafe = THREE.MathUtils.clamp(keyboardStrafe + touchStrafe, -1, 1)
+    if (this.isMobileTouchDevice) {
+      this.inputState.forward = Math.max(0, this.inputState.forward)
+    }
   }
 
   /**
