@@ -36,12 +36,12 @@
       "metalness": 0.35
     },
     "crowd": {
-      "maxAgents": 5,
+      "maxAgents": 10,
       "boysSharePercent": 50,
       "spawnLanesPerDirection": 1,
       "laneSpacing": 3,
-      "spawnDistance": 100,
-      "renderClipDistance": 200,
+      "spawnDistance": 299,
+      "renderClipDistance": 300,
       "minSpeed": 2,
       "maxSpeed": 20,
       "speedVariationAmplitude": 0.8,
@@ -53,6 +53,7 @@
       "rearYieldSpeedThreshold": 1.05,
       "laneEnterClearance": 2.25,
       "minForwardGap": 1.85,
+      "spawnMinGap": 3.4,
       "laneChangeCooldown": 0.9,
       "simulationHz": 10,
       "maxSimulationStepsPerFrame": 3,
