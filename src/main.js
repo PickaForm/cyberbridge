@@ -762,10 +762,10 @@ class CyberStreet {
       this._applyDemoVisualLevelSwitch(this._getCurrentLevelDefinition())
     }
 
-    this.proceduralCity.update(this.player.mesh.position.z)
-    this.crowd.update(deltaTime, this.player.mesh.position, this.player.forwardVector.z)
-    this.flyingCars.update(deltaTime, this.player.mesh.position)
     this.cameraRig.update(deltaTime)
+    this.proceduralCity.update(this.player.mesh.position.z, this.rendererApp.camera.position.z)
+    this.crowd.update(deltaTime, this.player.mesh.position, this.player.forwardVector.z, this.rendererApp.camera.position)
+    this.flyingCars.update(deltaTime, this.player.mesh.position, this.rendererApp.camera.position)
   }
 
   /**
@@ -795,7 +795,7 @@ class CyberStreet {
     this.proceduralCity.dispose()
     this.proceduralCity = new ProceduralCity(this.rendererApp.scene)
     this.proceduralCity.applyDayNightProfile(this.rendererApp.getSkyProfile())
-    this.proceduralCity.update(this.player.mesh.position.z)
+    this.proceduralCity.update(this.player.mesh.position.z, this.rendererApp.camera.position.z)
   }
 
   /**
@@ -807,7 +807,7 @@ class CyberStreet {
     this.crowd = new CrowdSystem(this.rendererApp.scene, {
       onNpcHit: (hitPayload) => this._handleNpcHit(hitPayload)
     })
-    this.crowd.update(0, this.player.mesh.position, this.player.forwardVector.z)
+    this.crowd.update(0, this.player.mesh.position, this.player.forwardVector.z, this.rendererApp.camera.position)
   }
 
   /**
@@ -998,7 +998,7 @@ class CyberStreet {
   _recreateFlyingCarsSystem() {
     this.flyingCars.dispose()
     this.flyingCars = new FlyingCarsSystem(this.rendererApp.scene)
-    this.flyingCars.update(0, this.player.mesh.position)
+    this.flyingCars.update(0, this.player.mesh.position, this.rendererApp.camera.position)
   }
 
   /**
@@ -1010,6 +1010,7 @@ class CyberStreet {
     this._onPointerUp = this._onPointerUp.bind(this)
     this._onPointerCancel = this._onPointerCancel.bind(this)
     this._onCanvasClick = this._onCanvasClick.bind(this)
+    this._onCanvasTouchStart = this._onCanvasTouchStart.bind(this)
   }
 
   /**
@@ -1022,6 +1023,7 @@ class CyberStreet {
     domElement.addEventListener("pointerup", this._onPointerUp)
     domElement.addEventListener("pointercancel", this._onPointerCancel)
     domElement.addEventListener("click", this._onCanvasClick)
+    domElement.addEventListener("touchstart", this._onCanvasTouchStart, { passive: true })
     window.addEventListener("pointerup", this._onPointerUp)
   }
 
@@ -1035,6 +1037,7 @@ class CyberStreet {
     domElement.removeEventListener("pointerup", this._onPointerUp)
     domElement.removeEventListener("pointercancel", this._onPointerCancel)
     domElement.removeEventListener("click", this._onCanvasClick)
+    domElement.removeEventListener("touchstart", this._onCanvasTouchStart)
     window.removeEventListener("pointerup", this._onPointerUp)
   }
 
@@ -1123,6 +1126,14 @@ class CyberStreet {
     }
 
     this._tryInteractWithNpcAt(event.clientX, event.clientY)
+  }
+
+  /**
+   * Capture touch gestures on canvas to unlock mobile audio reliably.
+   * @returns {void}
+   */
+  _onCanvasTouchStart() {
+    this.audioSystem.notifyUserGesture()
   }
 
   /**
@@ -1260,18 +1271,18 @@ class CyberStreet {
       this.isHitCountingEnabledForFrame = hasNewDistanceProgress && !this._isPlayerMovingBackward()
       this._renderChronoHud()
       this._evaluateLevelCompletion()
-      this.proceduralCity.update(this.player.mesh.position.z)
-      this.crowd.update(deltaTime, this.player.mesh.position, this.player.forwardVector.z)
-      this.flyingCars.update(deltaTime, this.player.mesh.position)
       this.cameraRig.update(deltaTime)
+      this.proceduralCity.update(this.player.mesh.position.z, this.rendererApp.camera.position.z)
+      this.crowd.update(deltaTime, this.player.mesh.position, this.player.forwardVector.z, this.rendererApp.camera.position)
+      this.flyingCars.update(deltaTime, this.player.mesh.position, this.rendererApp.camera.position)
     } else {
       const pausedDeltaTime = 0
       this.isHitCountingEnabledForFrame = false
       this._renderChronoHud()
-      this.proceduralCity.update(this.player.mesh.position.z)
-      this.crowd.update(pausedDeltaTime, this.player.mesh.position, this.player.forwardVector.z)
-      this.flyingCars.update(pausedDeltaTime, this.player.mesh.position)
       this.cameraRig.update(deltaTime)
+      this.proceduralCity.update(this.player.mesh.position.z, this.rendererApp.camera.position.z)
+      this.crowd.update(pausedDeltaTime, this.player.mesh.position, this.player.forwardVector.z, this.rendererApp.camera.position)
+      this.flyingCars.update(pausedDeltaTime, this.player.mesh.position, this.rendererApp.camera.position)
     }
     this.rendererApp.render()
 

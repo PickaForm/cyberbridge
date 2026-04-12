@@ -118,6 +118,10 @@ export class AudioSystem {
    */
   playHitSound() {
     if (!this._hasUnlocked) {
+      this.notifyUserGesture()
+    }
+
+    if (!this._hasUnlocked) {
       return
     }
 

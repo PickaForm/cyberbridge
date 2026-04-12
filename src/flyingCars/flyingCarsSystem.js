@@ -3,7 +3,7 @@
  *
  * Usage:
  * const flyingCars = new FlyingCarsSystem(scene)
- * flyingCars.update(delta, player.position)
+ * flyingCars.update(delta, player.position, camera.position)
  */
 import * as THREE from "three"
 import { gameConfig } from "../config/gameConfig.js"
@@ -40,14 +40,15 @@ export class FlyingCarsSystem {
    * Update flying cars movement and render matrices.
    * @param {number} deltaTime
    * @param {THREE.Vector3} playerPosition
+   * @param {THREE.Vector3 | null} cameraPosition
    * @returns {void}
    */
-  update(deltaTime, playerPosition) {
+  update(deltaTime, playerPosition, cameraPosition = null) {
     const cappedDeltaTime = Math.min(deltaTime, 0.1)
     for (const car of this.cars) {
       this._updateCar(car, cappedDeltaTime)
-      this._recycleIfOutOfRange(car, playerPosition.z)
-      this._syncCarTransform(car, playerPosition)
+      this._recycleIfOutOfRange(car, playerPosition.z, cameraPosition?.z ?? playerPosition.z)
+      this._syncCarTransform(car, playerPosition, cameraPosition)
     }
 
     this.flyingCarsRenderer.commit()
@@ -185,13 +186,15 @@ export class FlyingCarsSystem {
    * Recycle one car when it is outside spawn range.
    * @param {object} car
    * @param {number} playerZ
+   * @param {number} cameraZ
    * @returns {void}
    */
-  _recycleIfOutOfRange(car, playerZ) {
+  _recycleIfOutOfRange(car, playerZ, cameraZ = playerZ) {
     const spawnDistance = Math.max(8, gameConfig.flyingCars.spawnDistance)
     const carScale = this._getCarScale()
     const dz = car.z - playerZ
-    const isBehindMobileClipReached = this.isMobileTouchDevice && dz < -this.mobileBehindRecycleDistance
+    const behindDeltaZ = car.z - cameraZ
+    const isBehindMobileClipReached = this.isMobileTouchDevice && behindDeltaZ < -this.mobileBehindRecycleDistance
     const isOutOfSpawnRange = Math.abs(dz) >= spawnDistance
     if (!isBehindMobileClipReached && !isOutOfSpawnRange) {
       return
@@ -315,13 +318,15 @@ export class FlyingCarsSystem {
    * Sync one car transform into the renderer.
    * @param {object} car
    * @param {THREE.Vector3} playerPosition
+   * @param {THREE.Vector3 | null} cameraPosition
    * @returns {void}
    */
-  _syncCarTransform(car, playerPosition) {
+  _syncCarTransform(car, playerPosition, cameraPosition = null) {
     const clipDistance = Math.max(0, gameConfig.flyingCars.renderClipDistance)
     const carScale = this._getCarScale()
     const distanceToPlayer = Math.abs(car.z - playerPosition.z) + Math.abs(car.x - playerPosition.x) * 0.22
-    const isBehindMobileClipReached = this.isMobileTouchDevice && car.z < playerPosition.z - this.mobileBehindRenderPadding
+    const behindReferenceZ = cameraPosition?.z ?? playerPosition.z
+    const isBehindMobileClipReached = this.isMobileTouchDevice && car.z < behindReferenceZ - this.mobileBehindRenderPadding
     const shouldRender = !isBehindMobileClipReached && distanceToPlayer <= clipDistance
     car.appearance.direction = car.direction
     this.flyingCarsRenderer.setCarMatrix(car.instanceIndex, car.x, car.y, car.z, shouldRender, carScale)

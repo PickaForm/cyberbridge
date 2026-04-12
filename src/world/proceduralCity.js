@@ -3,7 +3,7 @@
  *
  * Usage:
  * const city = new ProceduralCity(scene)
- * city.update(player.position.z)
+ * city.update(player.position.z, camera.position.z)
  */
 import * as THREE from "three"
 import { gameConfig } from "../config/gameConfig.js"
@@ -37,13 +37,16 @@ export class ProceduralCity {
   /**
    * Update visible chunks around player position.
    * @param {number} playerZ
+   * @param {number} cameraZ
    * @returns {void}
    */
-  update(playerZ) {
+  update(playerZ, cameraZ = playerZ) {
     const chunkLength = gameConfig.world.chunkLength
     const playerChunk = Math.floor(playerZ / chunkLength)
+    const behindReferenceZ = this.isMobileTouchDevice ? cameraZ : playerZ
+    const behindReferenceChunk = Math.floor(behindReferenceZ / chunkLength)
     const visibleChunksBehind = this.isMobileTouchDevice ? 0 : gameConfig.world.visibleChunksBehind
-    const minChunk = playerChunk - visibleChunksBehind
+    const minChunk = behindReferenceChunk - visibleChunksBehind
     const defaultSpawnDistance = gameConfig.world.visibleChunksAhead * chunkLength
     const defaultRenderClipDistance = gameConfig.world.visibleChunksAhead * chunkLength
     const spawnDistanceInChunks = this._resolveDistanceInChunks("buildings.spawnDistance", defaultSpawnDistance, chunkLength)

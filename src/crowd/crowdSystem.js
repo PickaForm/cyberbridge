@@ -3,7 +3,7 @@
  *
  * Usage:
  * const crowd = new CrowdSystem(scene)
- * crowd.update(delta, player.position)
+ * crowd.update(delta, player.position, playerForwardZ, camera.position)
  */
 import * as THREE from "three"
 import { gameConfig } from "../config/gameConfig.js"
@@ -77,9 +77,10 @@ export class CrowdSystem {
    * @param {number} deltaTime
    * @param {THREE.Vector3} playerPosition
    * @param {number} playerFacingZ
+   * @param {THREE.Vector3 | null} cameraPosition
    * @returns {void}
    */
-  update(deltaTime, playerPosition, playerFacingZ = 0) {
+  update(deltaTime, playerPosition, playerFacingZ = 0, cameraPosition = null) {
     const cappedDeltaTime = Math.min(deltaTime, 0.1)
     const playerVelocityZ = this._computePlayerVelocityZ(playerPosition.z, cappedDeltaTime)
     const playerStartX = this.lastPlayerX ?? playerPosition.x
@@ -89,7 +90,7 @@ export class CrowdSystem {
     let simulationStepCount = 0
 
     while (this.simulationAccumulator >= this.simulationStep && simulationStepCount < this.maxSimulationStepsPerFrame) {
-      this._simulateStep(this.simulationStep, playerPosition, playerVelocityZ, playerFacingZ)
+      this._simulateStep(this.simulationStep, playerPosition, playerVelocityZ, playerFacingZ, cameraPosition)
       this.simulationAccumulator -= this.simulationStep
       simulationStepCount += 1
     }
@@ -110,7 +111,7 @@ export class CrowdSystem {
     )
 
     const interpolationAlpha = this.simulationAccumulator / this.simulationStep
-    this._renderInterpolated(interpolationAlpha, playerPosition)
+    this._renderInterpolated(interpolationAlpha, playerPosition, cameraPosition)
     this.crowdRenderer.commit()
     this.lastPlayerX = playerPosition.x
     this.lastPlayerY = playerPosition.y
@@ -255,9 +256,10 @@ export class CrowdSystem {
    * @param {THREE.Vector3} playerPosition
    * @param {number} playerVelocityZ
    * @param {number} playerFacingZ
+   * @param {THREE.Vector3 | null} cameraPosition
    * @returns {void}
    */
-  _simulateStep(simulationDelta, playerPosition, playerVelocityZ, playerFacingZ) {
+  _simulateStep(simulationDelta, playerPosition, playerVelocityZ, playerFacingZ, cameraPosition = null) {
     this.simulationTime += simulationDelta
     this._rebuildLaneMap()
 
@@ -282,7 +284,7 @@ export class CrowdSystem {
       }
 
       this._updateAgent(agent, lodSimulationDelta, playerPosition, playerVelocityZ, playerFacingZ)
-      this._recycleIfOutOfRange(agent, playerPosition.z)
+      this._recycleIfOutOfRange(agent, playerPosition.z, cameraPosition?.z ?? playerPosition.z)
     }
 
   }
@@ -291,9 +293,10 @@ export class CrowdSystem {
    * Render an interpolated crowd frame.
    * @param {number} interpolationAlpha
    * @param {THREE.Vector3} playerPosition
+   * @param {THREE.Vector3 | null} cameraPosition
    * @returns {void}
    */
-  _renderInterpolated(interpolationAlpha, playerPosition) {
+  _renderInterpolated(interpolationAlpha, playerPosition, cameraPosition = null) {
     const alpha = THREE.MathUtils.clamp(interpolationAlpha, 0, 1)
     for (const agent of this.agents) {
       const renderX = THREE.MathUtils.lerp(agent.previousX, agent.x, alpha)
@@ -302,7 +305,17 @@ export class CrowdSystem {
       const renderRotationX = THREE.MathUtils.lerp(agent.previousRotationX, agent.rotationX, alpha)
       const renderRotationY = THREE.MathUtils.lerp(agent.previousRotationY, agent.rotationY, alpha)
       const renderRotationZ = THREE.MathUtils.lerp(agent.previousRotationZ, agent.rotationZ, alpha)
-      this._syncAgentTransform(agent, renderX, renderY, renderZ, renderRotationX, renderRotationY, renderRotationZ, playerPosition)
+      this._syncAgentTransform(
+        agent,
+        renderX,
+        renderY,
+        renderZ,
+        renderRotationX,
+        renderRotationY,
+        renderRotationZ,
+        playerPosition,
+        cameraPosition
+      )
     }
   }
 
@@ -867,16 +880,18 @@ export class CrowdSystem {
    * Teleport agents far from player to the opposite side.
    * @param {object} agent
    * @param {number} playerZ
+   * @param {number} cameraZ
    * @returns {void}
    */
-  _recycleIfOutOfRange(agent, playerZ) {
+  _recycleIfOutOfRange(agent, playerZ, cameraZ = playerZ) {
     if (agent.isHitActive) {
       return
     }
 
     const maxDistance = gameConfig.crowd.spawnDistance
     const dz = agent.z - playerZ
-    const isBehindMobileClipReached = this.isMobileTouchDevice && dz < -this.mobileBehindRecycleDistance
+    const behindDeltaZ = agent.z - cameraZ
+    const isBehindMobileClipReached = this.isMobileTouchDevice && behindDeltaZ < -this.mobileBehindRecycleDistance
     const isOutOfSpawnRange = Math.abs(dz) >= maxDistance
     if (!isBehindMobileClipReached && !isOutOfSpawnRange) {
       return
@@ -1193,6 +1208,7 @@ export class CrowdSystem {
    * @param {number} renderRotationX
    * @param {number} renderRotationY
    * @param {number} renderRotationZ
+   * @param {THREE.Vector3 | null} cameraPosition
    * @returns {void}
   */
   _syncAgentTransform(
@@ -1203,11 +1219,13 @@ export class CrowdSystem {
     renderRotationX = 0,
     renderRotationY = 0,
     renderRotationZ = 0,
-    playerPosition = { x: 0, z: 0 }
+    playerPosition = { x: 0, z: 0 },
+    cameraPosition = null
   ) {
     const distanceToPlayer = Math.abs(renderZ - playerPosition.z) + Math.abs(renderX - playerPosition.x) * 0.25
     const clipDistance = Math.max(0, gameConfig.crowd.renderClipDistance)
-    const isBehindMobileClipReached = this.isMobileTouchDevice && renderZ < playerPosition.z - this.mobileBehindRenderPadding
+    const behindReferenceZ = cameraPosition?.z ?? playerPosition.z
+    const isBehindMobileClipReached = this.isMobileTouchDevice && renderZ < behindReferenceZ - this.mobileBehindRenderPadding
     const shouldRenderAgent = !isBehindMobileClipReached && distanceToPlayer <= clipDistance
     if (!shouldRenderAgent) {
       this.crowdRenderer.setAgentMatrix(agent.instanceIndex, renderX, renderZ, -9999, false)
