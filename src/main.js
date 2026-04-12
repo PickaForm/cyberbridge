@@ -1305,12 +1305,11 @@ class CyberStreet {
     const targetScore = this._getLevelTargetThreshold(levelDefinition, "score")
     const isDistanceTriggerActive = targetDistance > 0
     const isChronoTriggerActive = targetChrono > 0
-    const hasImmediateHitWinTrigger = !isDistanceTriggerActive
     const hasAnyHitTarget = targetGirlsHit > 0 || targetBoysHit > 0
     const isHitTargetsReached = this._areHitTargetsReached(targetGirlsHit, targetBoysHit)
 
-    // When no distance goal is configured, hit goals can end the level immediately.
-    if (hasImmediateHitWinTrigger && hasAnyHitTarget && isHitTargetsReached) {
+    // Hit quotas always win immediately once reached, even before distance objectives.
+    if (hasAnyHitTarget && isHitTargetsReached) {
       this._finishLevel(true, this._getLevelText(levelDefinition, "win"))
       return
     }

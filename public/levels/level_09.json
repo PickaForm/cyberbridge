@@ -4,7 +4,7 @@
     "distance": 2000,
     "chrono": 0,
     "score": 0,
-    "boysHit": 20,
+    "boysHit": 50,
     "girlsHit": 0
   },
   "lose": {
@@ -12,7 +12,7 @@
     "girlsHit": 0
   },
   "texts": {
-    "objective": "Evitement !... tente de toucher 20 garçons pour gagner !",
+    "objective": "Evitement !... tente de toucher 50 garçons pour gagner !",
     "win": "Nice !",
     "lose": "Alors, pas si facile que ça ?",
     "nextLevel": "La suite !",
