@@ -2,8 +2,7 @@ Audio assets used by Cyberbridge hit feature.
 
 Hit SFX:
 - Files:
-  - sfx-npc-hit-slap-1.wav
-  - sfx-npc-hit-slap-2.wav
+  - sfx-npc-hit.wav
 - Source page: https://opengameart.org/content/thwack-sounds
 - Source file: https://opengameart.org/sites/default/files/thwack-1.0.zip
 - Samples:

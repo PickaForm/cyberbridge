@@ -10,26 +10,18 @@ export class AudioSystem {
   /**
    * @param {object} options
    * @param {string} options.musicUrl
-   * @param {string[]} options.hitSfxUrls
-   * @param {string} options.hitAutoPrefix
-   * @param {string} options.hitAutoExtension
- * @param {number} options.maxHitVariants
- * @param {number} options.musicVolume
- * @param {number} options.hitVolume
- * @param {number} options.hitPoolPerVariant
- * @param {number} options.hitBurstSpacingMs
- * @param {number} options.hitBurstMaxQueue
- */
+   * @param {string} options.hitSfxUrl
+   * @param {number} options.musicVolume
+   * @param {number} options.hitVolume
+   * @param {number} options.hitBurstSpacingMs
+   * @param {number} options.hitBurstMaxQueue
+   */
   constructor(options = {}) {
     const {
       musicUrl = "/audio/music.mp3",
-      hitSfxUrls = [],
-      hitAutoPrefix = "/audio/sfx-npc-hit-slap-",
-      hitAutoExtension = "wav",
-      maxHitVariants = 12,
+      hitSfxUrl = "/audio/sfx-npc-hit.wav",
       musicVolume = 0.26,
       hitVolume = 0.9,
-      hitPoolPerVariant = 6,
       hitBurstSpacingMs = 28,
       hitBurstMaxQueue = 64
     } = options
@@ -39,28 +31,20 @@ export class AudioSystem {
     this._isMusicStarted = false
     this._onUnlockInteraction = this._onUnlockInteraction.bind(this)
     this.hitVolume = _clampVolume(hitVolume)
-    this.hitPoolPerVariant = Math.max(1, Math.round(hitPoolPerVariant))
-    this.hitAutoPrefix = hitAutoPrefix
-    this.hitAutoExtension = hitAutoExtension
-    this.maxHitVariants = Math.max(1, Math.round(maxHitVariants))
-    this.hitSfxUrlsOverride = Array.isArray(hitSfxUrls) ? hitSfxUrls.filter((sourceUrl) => Boolean(sourceUrl)) : []
+    this.hitSfxUrl = hitSfxUrl
     this.musicAudio = this._createAudio(musicUrl, musicVolume, true)
+    this.hitFallbackAudio = this._createAudio(this.hitSfxUrl, this.hitVolume, false)
 
     this.hitAudioContext = null
-    this.hitAudioBuffers = []
-    this.hitBuffersLoadingPromise = null
-    this.hitVariantUrls = []
-    this.hitAssetsPrewarmPromise = null
-    this.prewarmedHitAssets = []
+    this.hitAudioBuffer = null
+    this.preloadedHitArrayBuffer = null
+    this.hitAssetPreloadPromise = null
+    this.hitBufferLoadingPromise = null
     this.hitBurstSpacingMs = Math.max(8, Math.round(hitBurstSpacingMs))
     this.hitBurstMaxQueue = Math.max(1, Math.round(hitBurstMaxQueue))
     this.pendingHitBurstCount = 0
     this.hitBurstTimeoutId = null
-    const fallbackHitUrl = `${this.hitAutoPrefix}1.${this.hitAutoExtension}`
-    const initialHitUrl = this.hitSfxUrlsOverride[0] ?? fallbackHitUrl
-    this.hitFallbackPool = this._createHitFallbackPool(initialHitUrl, this.hitVolume, this.hitPoolPerVariant)
-    this.hitFallbackCursor = 0
-    this._startHitAssetsPrewarm()
+    this._startHitAssetPreload()
   }
 
   /**
@@ -74,10 +58,7 @@ export class AudioSystem {
     const nextHitVolume = _clampVolume(Number(hitVolumePercent) / 100)
     this.musicAudio.volume = nextMusicVolume
     this.hitVolume = nextHitVolume
-
-    for (const audioInstance of this.hitFallbackPool) {
-      audioInstance.volume = nextHitVolume
-    }
+    this.hitFallbackAudio.volume = nextHitVolume
   }
 
   /**
@@ -117,11 +98,11 @@ export class AudioSystem {
    * @returns {void}
    */
   playHitSound() {
-    if (!this._hasUnlocked) {
+    if (!this._hasUnlocked && !this._isMusicStarted) {
       this.notifyUserGesture()
     }
 
-    if (!this._hasUnlocked) {
+    if (!this._hasUnlocked && !this._isMusicStarted) {
       return
     }
 
@@ -142,10 +123,8 @@ export class AudioSystem {
 
     this.musicAudio.pause()
     this.musicAudio.src = ""
-    for (const audioInstance of this.hitFallbackPool) {
-      audioInstance.pause()
-      audioInstance.src = ""
-    }
+    this.hitFallbackAudio.pause()
+    this.hitFallbackAudio.src = ""
 
     if (this.hitBurstTimeoutId !== null) {
       clearTimeout(this.hitBurstTimeoutId)
@@ -164,14 +143,12 @@ export class AudioSystem {
    * @returns {void}
    */
   _onUnlockInteraction() {
-    if (this._isMusicStarted) {
-      return
-    }
-
     this._hasUnlocked = true
     this._ensureHitAudioContext()
-    this._startHitBuffersLoading()
-    this._startMusicPlaybackWithRetry()
+    this._startHitBufferLoading()
+    if (!this._isMusicStarted) {
+      this._startMusicPlaybackWithRetry()
+    }
   }
 
   /**
@@ -181,6 +158,7 @@ export class AudioSystem {
   _startMusicPlaybackWithRetry() {
     this.musicAudio.play()
       .then(() => {
+        this._hasUnlocked = true
         this._isMusicStarted = true
         if (this._unlockTarget) {
           this._unlockTarget.removeEventListener("pointerdown", this._onUnlockInteraction)
@@ -197,15 +175,13 @@ export class AudioSystem {
    * @returns {void}
    */
   _playBufferedHitSound() {
-    const variantIndex = Math.floor(Math.random() * this.hitAudioBuffers.length)
-    const selectedBuffer = this.hitAudioBuffers[variantIndex]
-    if (!selectedBuffer) {
+    if (!this.hitAudioContext || !this.hitAudioBuffer) {
       return
     }
 
     const sourceNode = this.hitAudioContext.createBufferSource()
     const gainNode = this.hitAudioContext.createGain()
-    sourceNode.buffer = selectedBuffer
+    sourceNode.buffer = this.hitAudioBuffer
     gainNode.gain.value = this.hitVolume
     sourceNode.connect(gainNode)
     gainNode.connect(this.hitAudioContext.destination)
@@ -213,19 +189,12 @@ export class AudioSystem {
   }
 
   /**
-   * Play one fallback hit SFX through HTMLAudio while buffers are not ready.
+   * Play one fallback hit SFX through HTMLAudio while buffer is not ready.
    * @returns {void}
    */
   _playFallbackHitSound() {
-    if (this.hitFallbackPool.length === 0) {
-      return
-    }
-
-    const nextAudioIndex = this._getNextFallbackAudioIndex()
-    const audioInstance = this.hitFallbackPool[nextAudioIndex]
-    this.hitFallbackCursor = (nextAudioIndex + 1) % this.hitFallbackPool.length
-    audioInstance.currentTime = 0
-    audioInstance.play().catch(() => {})
+    this.hitFallbackAudio.currentTime = 0
+    this.hitFallbackAudio.play().catch(() => {})
   }
 
   /**
@@ -282,7 +251,7 @@ export class AudioSystem {
    * @returns {boolean}
    */
   _isBufferedHitPlaybackReady() {
-    if (!this.hitAudioContext || this.hitAudioBuffers.length <= 0) {
+    if (!this.hitAudioContext || !this.hitAudioBuffer) {
       return false
     }
 
@@ -294,26 +263,6 @@ export class AudioSystem {
       this.hitAudioContext.resume().catch(() => {})
     }
     return false
-  }
-
-  /**
-   * Find fallback audio index that is currently paused, else use round-robin.
-   * @returns {number}
-   */
-  _getNextFallbackAudioIndex() {
-    if (this.hitFallbackPool.length <= 0) {
-      return 0
-    }
-
-    for (let offset = 0; offset < this.hitFallbackPool.length; offset += 1) {
-      const candidateIndex = (this.hitFallbackCursor + offset) % this.hitFallbackPool.length
-      const candidateAudio = this.hitFallbackPool[candidateIndex]
-      if (!candidateAudio || candidateAudio.paused || candidateAudio.ended) {
-        return candidateIndex
-      }
-    }
-
-    return this.hitFallbackCursor
   }
 
   /**
@@ -329,22 +278,6 @@ export class AudioSystem {
     audioInstance.loop = loop
     audioInstance.volume = _clampVolume(volume)
     return audioInstance
-  }
-
-  /**
-   * Create a fallback pool for overlapping HTMLAudio hit SFX.
-   * @param {string} sourceUrl
-   * @param {number} volume
-   * @param {number} poolSize
-   * @returns {HTMLAudioElement[]}
-   */
-  _createHitFallbackPool(sourceUrl, volume, poolSize) {
-    const safePoolSize = Math.max(1, Math.round(poolSize))
-    const result = []
-    for (let index = 0; index < safePoolSize; index += 1) {
-      result.push(this._createAudio(sourceUrl, volume, false))
-    }
-    return result
   }
 
   /**
@@ -371,114 +304,62 @@ export class AudioSystem {
   }
 
   /**
-   * Start asynchronous loading of auto-detected hit audio buffers.
+   * Start asynchronous loading of the hit audio buffer.
    * @returns {void}
    */
-  _startHitBuffersLoading() {
+  _startHitBufferLoading() {
     if (!this.hitAudioContext) {
       return
     }
 
-    if (this.hitBuffersLoadingPromise) {
+    if (this.hitBufferLoadingPromise) {
       return
     }
 
-    this.hitBuffersLoadingPromise = this._loadHitBuffers()
-      .then((loadedBuffers) => {
-        if (loadedBuffers.length > 0) {
-          this.hitAudioBuffers = loadedBuffers
+    this.hitBufferLoadingPromise = this._loadHitBuffer()
+      .then((decodedBuffer) => {
+        if (decodedBuffer) {
+          this.hitAudioBuffer = decodedBuffer
         }
       })
       .catch(() => {})
   }
 
   /**
-   * Load and decode hit variant files.
-   * @returns {Promise<AudioBuffer[]>}
+   * Load and decode the configured hit file.
+   * @returns {Promise<AudioBuffer | null>}
    */
-  async _loadHitBuffers() {
-    await this._startHitAssetsPrewarm()
-    const variantUrls = this.hitVariantUrls.length > 0
-      ? this.hitVariantUrls
-      : this.hitSfxUrlsOverride.length > 0
-        ? this.hitSfxUrlsOverride
-        : await this._detectAutoHitUrls()
-    const decodedBuffers = []
-    if (this.prewarmedHitAssets.length > 0) {
-      for (const asset of this.prewarmedHitAssets) {
-        const decodedBuffer = await this._decodeAudioArrayBuffer(asset.arrayBuffer)
-        if (decodedBuffer) {
-          decodedBuffers.push(decodedBuffer)
-        }
-      }
-      if (decodedBuffers.length > 0) {
-        return decodedBuffers
-      }
+  async _loadHitBuffer() {
+    await this._startHitAssetPreload()
+    if (this.preloadedHitArrayBuffer) {
+      const preloadedClone = this.preloadedHitArrayBuffer.slice(0)
+      return await this._decodeAudioArrayBuffer(preloadedClone)
     }
-
-    for (const sourceUrl of variantUrls) {
-      const decodedBuffer = await this._fetchAndDecodeAudioBuffer(sourceUrl)
-      if (decodedBuffer) {
-        decodedBuffers.push(decodedBuffer)
-      }
-    }
-    return decodedBuffers
+    return await this._fetchAndDecodeAudioBuffer(this.hitSfxUrl)
   }
 
   /**
-   * Start prewarm of hit files at startup.
+   * Start hit file preloading at startup for faster first playback.
    * @returns {Promise<void>}
    */
-  async _startHitAssetsPrewarm() {
-    if (this.hitAssetsPrewarmPromise) {
-      return this.hitAssetsPrewarmPromise
+  async _startHitAssetPreload() {
+    if (this.hitAssetPreloadPromise) {
+      return this.hitAssetPreloadPromise
     }
 
-    this.hitAssetsPrewarmPromise = this._prewarmHitAssets()
+    this.hitAssetPreloadPromise = this._preloadHitAsset()
       .catch(() => {})
       .then(() => {})
-    return this.hitAssetsPrewarmPromise
+    return this.hitAssetPreloadPromise
   }
 
   /**
-   * Resolve hit variant URLs and fetch their binary data.
+   * Preload the hit file through HTMLAudio and fetch cache.
    * @returns {Promise<void>}
    */
-  async _prewarmHitAssets() {
-    const variantUrls = this.hitSfxUrlsOverride.length > 0 ? this.hitSfxUrlsOverride : await this._detectAutoHitUrls()
-    this.hitVariantUrls = variantUrls
-    const assets = []
-    for (const sourceUrl of variantUrls) {
-      const arrayBuffer = await _fetchAudioArrayBuffer(sourceUrl)
-      if (!arrayBuffer) {
-        continue
-      }
-      assets.push({
-        sourceUrl,
-        arrayBuffer
-      })
-    }
-    this.prewarmedHitAssets = assets
-  }
-
-  /**
-   * Detect available slap files using numeric suffix naming.
-   * @returns {Promise<string[]>}
-   */
-  async _detectAutoHitUrls() {
-    const candidateUrls = []
-    for (let index = 1; index <= this.maxHitVariants; index += 1) {
-      candidateUrls.push(`${this.hitAutoPrefix}${index}.${this.hitAutoExtension}`)
-    }
-
-    const existenceMap = await Promise.all(candidateUrls.map((sourceUrl) => _doesAudioAssetExist(sourceUrl)))
-    const detectedUrls = candidateUrls.filter((_, index) => existenceMap[index])
-    if (detectedUrls.length > 0) {
-      return detectedUrls
-    }
-
-    const fallbackHitUrl = `${this.hitAutoPrefix}1.${this.hitAutoExtension}`
-    return [fallbackHitUrl]
+  async _preloadHitAsset() {
+    this.hitFallbackAudio.load()
+    this.preloadedHitArrayBuffer = await _fetchAudioArrayBuffer(this.hitSfxUrl)
   }
 
   /**
@@ -531,23 +412,6 @@ export class AudioSystem {
  */
 function _clampVolume(volume) {
   return Math.min(1, Math.max(0, Number(volume) || 0))
-}
-
-/**
- * Check if one audio asset exists on current host.
- * @param {string} sourceUrl
- * @returns {Promise<boolean>}
- */
-async function _doesAudioAssetExist(sourceUrl) {
-  try {
-    const response = await fetch(sourceUrl, {
-      method: "HEAD",
-      cache: "no-store"
-    })
-    return response.ok
-  } catch (error) {
-    return false
-  }
 }
 
 /**

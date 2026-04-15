@@ -32,6 +32,8 @@ import { gameConfig } from "./config/gameConfig.js"
 import { loadGameLevels, normalizeLevelDefinition } from "./levels/levelLoader.js"
 
 const DEV_MODE_STORAGE_KEY = "cyberlove-dev-mode-v1"
+const DEMO_FORCED_MUSIC_VOLUME_PERCENT = 80
+const DEMO_FORCED_HIT_VOLUME_PERCENT = 40
 /**
  * Game orchestrator.
  */
@@ -254,7 +256,6 @@ class CyberStreet {
    */
   _startDemoMode() {
     this.currentLevelIndex = 0
-    this.audioSystem.requestMusicStart()
     const levelDefinition = this._getCurrentLevelDefinition()
     const levelRuntimeProfile = this._buildLevelRuntimeProfile(levelDefinition)
     this._applyRuntimeProfile(levelRuntimeProfile, false)
@@ -266,6 +267,8 @@ class CyberStreet {
     this._hideOverlay()
     this._setInsertCoinVisibility(true)
     this._setDemoHudVisibility(true)
+    this._applyDemoForcedAudioVolumes()
+    this.audioSystem.requestMusicStart()
     this.lastFrameTime = performance.now()
   }
 
@@ -738,6 +741,15 @@ class CyberStreet {
     }
 
     this._applyRuntimeProfile(nextProfile, false)
+    this._applyDemoForcedAudioVolumes()
+  }
+
+  /**
+   * Force demo audio volumes regardless of active profile or level init.
+   * @returns {void}
+   */
+  _applyDemoForcedAudioVolumes() {
+    this.audioSystem.setVolumesFromPercent(DEMO_FORCED_MUSIC_VOLUME_PERCENT, DEMO_FORCED_HIT_VOLUME_PERCENT)
   }
 
   /**
@@ -816,11 +828,16 @@ class CyberStreet {
    * @returns {void}
    */
   _handleNpcHit(hitPayload) {
-    if (this.gameState !== "playing") {
+    const isHitAudioState = this.gameState === "playing" || this.gameState === "demo"
+    if (!isHitAudioState) {
       return
     }
 
     this.audioSystem.playHitSound()
+    if (this.gameState !== "playing") {
+      return
+    }
+
     if (!this.isHitCountingEnabledForFrame) {
       return
     }

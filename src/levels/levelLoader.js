@@ -37,8 +37,24 @@ export async function loadGameLevels() {
       continue
     }
 
-    consecutiveMisses = 0
+    if (!_isJsonResponse(response)) {
+      consecutiveMisses += 1
+      if (consecutiveMisses >= MAX_CONSECUTIVE_MISSES) {
+        break
+      }
+      continue
+    }
+
     const rawContent = await response.text()
+    if (_looksLikeHtml(rawContent)) {
+      consecutiveMisses += 1
+      if (consecutiveMisses >= MAX_CONSECUTIVE_MISSES) {
+        break
+      }
+      continue
+    }
+
+    consecutiveMisses = 0
     if (!rawContent.trim()) {
       console.warn(`Level file "${levelUrl}" is empty and has been ignored`)
       continue
@@ -149,4 +165,25 @@ function _asText(value) {
     return ""
   }
   return value.trim()
+}
+
+/**
+ * Check whether a fetch response is likely JSON.
+ * @param {Response} response
+ * @returns {boolean}
+ */
+function _isJsonResponse(response) {
+  const contentType = response.headers.get("content-type") || ""
+  const normalizedContentType = contentType.toLowerCase()
+  return normalizedContentType.includes("application/json") || normalizedContentType.includes("text/json")
+}
+
+/**
+ * Detect obvious HTML fallback payloads.
+ * @param {string} rawContent
+ * @returns {boolean}
+ */
+function _looksLikeHtml(rawContent) {
+  const trimmedContent = rawContent.trim().toLowerCase()
+  return trimmedContent.startsWith("<!doctype html") || trimmedContent.startsWith("<html")
 }
