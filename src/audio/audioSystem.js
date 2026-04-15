@@ -29,6 +29,8 @@ export class AudioSystem {
     this._unlockTarget = null
     this._hasUnlocked = false
     this._isMusicStarted = false
+    this._didLogAutoplayBlock = false
+    this._musicStartRequested = false
     this._onUnlockInteraction = this._onUnlockInteraction.bind(this)
     this.hitVolume = _clampVolume(hitVolume)
     this.hitSfxUrl = hitSfxUrl
@@ -79,10 +81,11 @@ export class AudioSystem {
 
   /**
    * Notify the system that a direct user gesture happened.
+   * @param {Event | null} event
    * @returns {void}
    */
-  notifyUserGesture() {
-    this._onUnlockInteraction()
+  notifyUserGesture(event = null) {
+    this._onUnlockInteraction(event)
   }
 
   /**
@@ -90,7 +93,8 @@ export class AudioSystem {
    * @returns {void}
    */
   requestMusicStart() {
-    this._startMusicPlaybackWithRetry()
+    this._musicStartRequested = true
+    this._startMusicPlaybackWithRetry(false)
   }
 
   /**
@@ -98,10 +102,6 @@ export class AudioSystem {
    * @returns {void}
    */
   playHitSound() {
-    if (!this._hasUnlocked && !this._isMusicStarted) {
-      this.notifyUserGesture()
-    }
-
     if (!this._hasUnlocked && !this._isMusicStarted) {
       return
     }
@@ -140,26 +140,40 @@ export class AudioSystem {
 
   /**
    * Handle the first interaction that allows audio playback.
+   * @param {Event | null} event
    * @returns {void}
    */
-  _onUnlockInteraction() {
-    this._hasUnlocked = true
+  _onUnlockInteraction(event = null) {
+    if (!this._isTrustedUserEvent(event) && !this._hasUnlocked) {
+      return
+    }
+
     this._ensureHitAudioContext()
     this._startHitBufferLoading()
-    if (!this._isMusicStarted) {
-      this._startMusicPlaybackWithRetry()
+    if (this.hitAudioContext && this.hitAudioContext.state === "running") {
+      this._hasUnlocked = true
+    }
+
+    if (this._musicStartRequested || !this._isMusicStarted) {
+      this._startMusicPlaybackWithRetry(this._isTrustedUserEvent(event))
     }
   }
 
   /**
    * Try to start background music and keep unlock listeners until success.
+   * @param {boolean} shouldLogFailure
    * @returns {void}
    */
-  _startMusicPlaybackWithRetry() {
+  _startMusicPlaybackWithRetry(shouldLogFailure) {
+    if (this._isMusicStarted) {
+      return
+    }
+
     this.musicAudio.play()
       .then(() => {
         this._hasUnlocked = true
         this._isMusicStarted = true
+        this._didLogAutoplayBlock = false
         if (this._unlockTarget) {
           this._unlockTarget.removeEventListener("pointerdown", this._onUnlockInteraction)
           this._unlockTarget.removeEventListener("keydown", this._onUnlockInteraction)
@@ -167,7 +181,24 @@ export class AudioSystem {
           this._unlockTarget = null
         }
       })
-      .catch(() => {})
+      .catch((error) => {
+        if (!shouldLogFailure || this._didLogAutoplayBlock) {
+          return
+        }
+
+        this._didLogAutoplayBlock = true
+        const errorName = String(error?.name || "unknown")
+        console.info(`Music autoplay blocked until user gesture (${errorName})`)
+      })
+  }
+
+  /**
+   * Check if event is a trusted browser user interaction.
+   * @param {Event | null} event
+   * @returns {boolean}
+   */
+  _isTrustedUserEvent(event) {
+    return Boolean(event && event.isTrusted)
   }
 
   /**

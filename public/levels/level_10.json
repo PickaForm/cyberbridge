@@ -12,11 +12,26 @@
     "girlsHit": 0
   },
   "texts": {
-    "objective": "Baston finale et parité : éjecte du pont 30 garçons et 30 filles en moins de 20 secondes !",
-    "win": "Well done, t'es ceinture noire de la baffe !",
-    "lose": "C'est la parité qui te fait peur ?",
-    "nextLevel": "Allons faire du shopping nocturne !",
-    "retry": "Allez encore un essai..."
+    "objective": {
+      "fr": "Baston finale et parité : éjecte du pont 30 garçons et 30 filles en moins de 20 secondes !",
+      "en": "Final brawl and parity: throw 30 boys and 30 girls off the bridge in under 20 seconds!"
+    },
+    "win": {
+      "fr": "Well done, t'es ceinture noire de la baffe !",
+      "en": "Well done, you're a black belt in slapping!"
+    },
+    "lose": {
+      "fr": "C'est la parité qui te fait peur ?",
+      "en": "Is parity what scares you?"
+    },
+    "nextLevel": {
+      "fr": "Allons faire du shopping nocturne !",
+      "en": "Let's go do some night shopping!"
+    },
+    "retry": {
+      "fr": "Allez encore un essai...",
+      "en": "Come on, one more try..."
+    }
   },
   "init": {
     "player": {

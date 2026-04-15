@@ -12,11 +12,26 @@
     "girlsHit": 0
   },
   "texts": {
-    "objective": "Chasse à l'homme : traque et giffle les mecs qui passent sur l'esplanade !",
-    "win": "Chasseur de prime confirmé !",
-    "lose": "Un peu mou du genou, non ?",
-    "nextLevel": "Go go go, enchaine !",
-    "retry": "Non mais t'as vu la taille de l'esplanade ? OK, je recommence !"
+    "objective": {
+      "fr": "Chasse à l'homme : traque et gifle les mecs qui passent sur l'esplanade !",
+      "en": "Manhunt: track and slap the guys crossing the esplanade!"
+    },
+    "win": {
+      "fr": "Chasseur de prime confirmé !",
+      "en": "Certified bounty hunter!"
+    },
+    "lose": {
+      "fr": "Un peu mou du genou, non ?",
+      "en": "A bit sluggish, huh?"
+    },
+    "nextLevel": {
+      "fr": "Go go go, enchaine !",
+      "en": "Go go go, keep rolling!"
+    },
+    "retry": {
+      "fr": "Non mais t'as vu la taille de l'esplanade ? OK, je recommence !",
+      "en": "Have you seen how huge this esplanade is? OK, retry!"
+    }
   },
   "init": {
     "player": {

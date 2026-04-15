@@ -66,6 +66,18 @@ export class DevPalette {
   }
 
   /**
+   * Refresh editable game rules from one level definition.
+   * @param {object | null} levelDefinition
+   * @returns {void}
+   */
+  refreshLevelDefinition(levelDefinition = null) {
+    const sourceLevelDefinition = levelDefinition ?? this.onLevelDefinitionRequest?.() ?? null
+    this.levelDefinition = this._normalizeLevelDefinition(sourceLevelDefinition)
+    this._renderCurrentLevelLabel()
+    this._renderGameRulesRows()
+  }
+
+  /**
    * Create root palette element.
    * @returns {HTMLElement}
    */
@@ -353,11 +365,11 @@ export class DevPalette {
     this._appendGameRuleNumberRow("target.girlsHit", "target girls hit", this.levelDefinition.target.girlsHit)
     this._appendGameRuleNumberRow("lose.boysHit", "lose boys hit", this.levelDefinition.lose.boysHit)
     this._appendGameRuleNumberRow("lose.girlsHit", "lose girls hit", this.levelDefinition.lose.girlsHit)
-    this._appendGameRuleTextRow("texts.objective", "objective text", this.levelDefinition.texts.objective)
-    this._appendGameRuleTextRow("texts.win", "win text", this.levelDefinition.texts.win)
-    this._appendGameRuleTextRow("texts.lose", "lose text", this.levelDefinition.texts.lose)
-    this._appendGameRuleTextRow("texts.nextLevel", "next level text", this.levelDefinition.texts.nextLevel)
-    this._appendGameRuleTextRow("texts.retry", "retry text", this.levelDefinition.texts.retry)
+    this._appendGameRuleTextRow("texts.objective", "objective text", this._resolveEditableText(this.levelDefinition.texts.objective))
+    this._appendGameRuleTextRow("texts.win", "win text", this._resolveEditableText(this.levelDefinition.texts.win))
+    this._appendGameRuleTextRow("texts.lose", "lose text", this._resolveEditableText(this.levelDefinition.texts.lose))
+    this._appendGameRuleTextRow("texts.nextLevel", "next level text", this._resolveEditableText(this.levelDefinition.texts.nextLevel))
+    this._appendGameRuleTextRow("texts.retry", "retry text", this._resolveEditableText(this.levelDefinition.texts.retry))
   }
 
   /**
@@ -666,6 +678,24 @@ export class DevPalette {
     }
 
     const targetKey = pathSegments[pathSegments.length - 1]
+    if (pathSegments[0] === "texts") {
+      const previousTextValue = currentObject[targetKey]
+      const nextFrenchValue = String(value ?? "")
+      if (previousTextValue && typeof previousTextValue === "object" && !Array.isArray(previousTextValue)) {
+        currentObject[targetKey] = {
+          ...previousTextValue,
+          fr: nextFrenchValue
+        }
+        return
+      }
+
+      currentObject[targetKey] = {
+        fr: nextFrenchValue,
+        en: ""
+      }
+      return
+    }
+
     currentObject[targetKey] = value
   }
 
@@ -694,14 +724,57 @@ export class DevPalette {
         girlsHit: Math.max(0, Math.round(Number(sourceLose.girlsHit) || 0))
       },
       texts: {
-        objective: String(sourceTexts.objective ?? ""),
-        win: String(sourceTexts.win ?? ""),
-        lose: String(sourceTexts.lose ?? ""),
-        nextLevel: String(sourceTexts.nextLevel ?? ""),
-        retry: String(sourceTexts.retry ?? "")
+        objective: this._normalizeEditableLocalizedText(sourceTexts.objective),
+        win: this._normalizeEditableLocalizedText(sourceTexts.win),
+        lose: this._normalizeEditableLocalizedText(sourceTexts.lose),
+        nextLevel: this._normalizeEditableLocalizedText(sourceTexts.nextLevel),
+        retry: this._normalizeEditableLocalizedText(sourceTexts.retry)
       },
       init: sourceLevel.init && typeof sourceLevel.init === "object" ? sourceLevel.init : {}
     }
+  }
+
+  /**
+   * Normalize one level text value to editable localized shape.
+   * @param {unknown} textValue
+   * @returns {{fr: string, en: string}}
+   */
+  _normalizeEditableLocalizedText(textValue) {
+    if (typeof textValue === "string") {
+      return {
+        fr: textValue,
+        en: ""
+      }
+    }
+
+    if (!textValue || typeof textValue !== "object" || Array.isArray(textValue)) {
+      return {
+        fr: "",
+        en: ""
+      }
+    }
+
+    return {
+      fr: String(textValue.fr ?? ""),
+      en: String(textValue.en ?? "")
+    }
+  }
+
+  /**
+   * Resolve one editable text value from legacy or localized level text shape.
+   * @param {unknown} textValue
+   * @returns {string}
+   */
+  _resolveEditableText(textValue) {
+    if (typeof textValue === "string") {
+      return textValue
+    }
+
+    if (!textValue || typeof textValue !== "object" || Array.isArray(textValue)) {
+      return ""
+    }
+
+    return String(textValue.fr ?? textValue.en ?? "")
   }
 
   /**

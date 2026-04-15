@@ -12,11 +12,26 @@
     "girlsHit": 1
   },
   "texts": {
-    "objective": "Rando zen et shopping nocturne : ne bouscule personne !",
-    "win": "Bravo, t'es un ange de la route !",
-    "lose": "Pas encore prêt pour les centres commerciaux ?",
-    "nextLevel": "Easy... t'as plus dur ?",
-    "retry": "Je promets de ne plus bousculer personne, essayons encore..."
+    "objective": {
+      "fr": "Rando zen et shopping nocturne : ne bouscule personne !",
+      "en": "Zen walk and night shopping: don't bump into anyone!"
+    },
+    "win": {
+      "fr": "Bravo, t'es un ange de la route !",
+      "en": "Nice, you're a road angel!"
+    },
+    "lose": {
+      "fr": "Pas encore prêt pour les centres commerciaux ?",
+      "en": "Not ready for malls yet?"
+    },
+    "nextLevel": {
+      "fr": "Easy... t'as plus dur ?",
+      "en": "Easy... got anything harder?"
+    },
+    "retry": {
+      "fr": "Je promets de ne plus bousculer personne, essayons encore...",
+      "en": "I promise I won't bump into anyone, let's try again..."
+    }
   },
   "init": {
     "player": {

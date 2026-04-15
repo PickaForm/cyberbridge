@@ -12,11 +12,26 @@
     "girlsHit": 10
   },
   "texts": {
-    "objective": "Evite de taper les filles !",
-    "win": "Pas mal, t'as évité le pire !",
-    "lose": "T'as percuté 10 filles, boulet !",
-    "nextLevel": "Continuer",
-    "retry": "Etre plus gentleman"
+    "objective": {
+      "fr": "Évite de taper les filles !",
+      "en": "Avoid hitting girls!"
+    },
+    "win": {
+      "fr": "Pas mal, t'as évité le pire !",
+      "en": "Not bad, you avoided the worst!"
+    },
+    "lose": {
+      "fr": "T'as percuté 10 filles, boulet !",
+      "en": "You slammed into 10 girls, genius!"
+    },
+    "nextLevel": {
+      "fr": "Continuer",
+      "en": "Continue"
+    },
+    "retry": {
+      "fr": "Être plus gentleman",
+      "en": "Be more gentlemanly"
+    }
   },
   "init": {
     "player": {

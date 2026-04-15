@@ -12,11 +12,26 @@
     "girlsHit": 0
   },
   "texts": {
-    "objective": "Pluie acide. Cours !... et touche 5 garçons et 5 filles pour gagner !",
-    "win": "Ca valait le coup de se mouiller !",
-    "lose": "OK, ça va un peu vite, mais tu peux le faire !",
-    "nextLevel": "Next level !",
-    "retry": "Con-cen-tra-tion ! Relance !"
+    "objective": {
+      "fr": "Pluie acide. Cours !... et touche 5 garçons et 5 filles pour gagner !",
+      "en": "Acid rain. Run!... and hit 5 boys and 5 girls to win!"
+    },
+    "win": {
+      "fr": "Ca valait le coup de se mouiller !",
+      "en": "Getting soaked was worth it!"
+    },
+    "lose": {
+      "fr": "OK, ça va un peu vite, mais tu peux le faire !",
+      "en": "OK, it's a bit fast, but you can do it!"
+    },
+    "nextLevel": {
+      "fr": "Next level !",
+      "en": "Next level!"
+    },
+    "retry": {
+      "fr": "Con-cen-tra-tion ! Relance !",
+      "en": "Con-cen-tra-tion! Retry!"
+    }
   },
   "init": {
     "player": {

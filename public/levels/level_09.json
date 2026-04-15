@@ -12,11 +12,26 @@
     "girlsHit": 0
   },
   "texts": {
-    "objective": "Evitement !... tente de toucher 50 garçons pour gagner !",
-    "win": "Nice !",
-    "lose": "Alors, pas si facile que ça ?",
-    "nextLevel": "La suite !",
-    "retry": "Les chiens, ils esquivent !"
+    "objective": {
+      "fr": "Evitement !... tente de toucher 50 garçons pour gagner !",
+      "en": "Evasion!... try to hit 50 boys to win!"
+    },
+    "win": {
+      "fr": "Nice !",
+      "en": "Nice!"
+    },
+    "lose": {
+      "fr": "Alors, pas si facile que ça ?",
+      "en": "So, not that easy, huh?"
+    },
+    "nextLevel": {
+      "fr": "La suite !",
+      "en": "Next!"
+    },
+    "retry": {
+      "fr": "Les chiens, ils esquivent !",
+      "en": "Those dogs keep dodging!"
+    }
   },
   "init": {
     "player": {

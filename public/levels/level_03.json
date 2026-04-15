@@ -12,11 +12,26 @@
     "girlsHit": 0
   },
   "texts": {
-    "objective": "Fonce dans le tas !",
-    "win": "Wow, t'es une vraie machine à baffes, respect !",
-    "lose": "Tu manques clairement d'ambition",
-    "nextLevel": "Je sais, donc laisse moi passer au level suivant, sinon...",
-    "retry": "Baffer mieux"
+    "objective": {
+      "fr": "Fonce dans le tas !",
+      "en": "Charge into the crowd!"
+    },
+    "win": {
+      "fr": "Wow, t'es une vraie machine à baffes, respect !",
+      "en": "Wow, you're a real slap machine, respect!"
+    },
+    "lose": {
+      "fr": "Tu manques clairement d'ambition",
+      "en": "You clearly lack ambition"
+    },
+    "nextLevel": {
+      "fr": "Je sais, donc laisse moi passer au level suivant, sinon...",
+      "en": "I know, now let me through to the next level, or else..."
+    },
+    "retry": {
+      "fr": "Baffer mieux",
+      "en": "Slap better"
+    }
   },
   "init": {
     "player": {

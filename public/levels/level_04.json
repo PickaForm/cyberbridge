@@ -12,11 +12,26 @@
     "girlsHit": 0
   },
   "texts": {
-    "objective": "Question de ratio...\n1 mec = 10 points, 1 fille = -10 points",
-    "win": "OMG, t'as des réflexes de mouche !",
-    "lose": "Hmmm, pas assez de réflexes. Recalé !",
-    "nextLevel": "Je veux voir la suite !",
-    "retry": "Use the Force"
+    "objective": {
+      "fr": "Question de ratio...\n1 mec = 10 points, 1 fille = -10 points",
+      "en": "It's all about ratio...\n1 guy = 10 points, 1 girl = -10 points"
+    },
+    "win": {
+      "fr": "OMG, t'as des réflexes de mouche !",
+      "en": "OMG, your reflexes are insane!"
+    },
+    "lose": {
+      "fr": "Hmmm, pas assez de réflexes. Recalé !",
+      "en": "Hmmm, not enough reflexes. Failed!"
+    },
+    "nextLevel": {
+      "fr": "Je veux voir la suite !",
+      "en": "I want to see the next one!"
+    },
+    "retry": {
+      "fr": "Use the Force",
+      "en": "Use the Force"
+    }
   },
   "init": {
     "player": {

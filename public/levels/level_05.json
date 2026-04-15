@@ -12,11 +12,26 @@
     "girlsHit": 0
   },
   "texts": {
-    "objective": "Trouve les mecs!",
-    "win": "Well done, toi au moins, tu sais faire la différence !",
-    "lose": "Allez, un petit effort, tu peux faire mieux que ça !",
-    "nextLevel": "Let's continue, j'ai pas toute la journée !",
-    "retry": "Ok, j'y retourne !"
+    "objective": {
+      "fr": "Trouve les mecs !",
+      "en": "Find the guys!"
+    },
+    "win": {
+      "fr": "Well done, toi au moins, tu sais faire la différence !",
+      "en": "Well done, at least you can tell the difference!"
+    },
+    "lose": {
+      "fr": "Allez, un petit effort, tu peux faire mieux que ça !",
+      "en": "Come on, a little effort, you can do better than that!"
+    },
+    "nextLevel": {
+      "fr": "Let's continue, j'ai pas toute la journée !",
+      "en": "Let's continue, I don't have all day!"
+    },
+    "retry": {
+      "fr": "Ok, j'y retourne !",
+      "en": "OK, I'm going back in!"
+    }
   },
   "init": {
     "player": {

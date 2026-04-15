@@ -12,11 +12,26 @@
     "girlsHit": 1
   },
   "texts": {
-    "objective": "Saute mouton ! Ne touche personne sur 5km !",
-    "win": "Sauteur de mouton de l'espace !",
-    "lose": "Saute par dessus les gens, pas sur les gens !",
-    "nextLevel": "OK, et maintenant ?",
-    "retry": "C'est n'importe quoi ce niveau. Relance !"
+    "objective": {
+      "fr": "Saute mouton ! Ne touche personne sur 5km !",
+      "en": "Leapfrog! Don't hit anyone for 5km!"
+    },
+    "win": {
+      "fr": "Sauteur de mouton de l'espace !",
+      "en": "Space leapfrog champion!"
+    },
+    "lose": {
+      "fr": "Saute par dessus les gens, pas sur les gens !",
+      "en": "Jump over people, not on people!"
+    },
+    "nextLevel": {
+      "fr": "OK, et maintenant ?",
+      "en": "OK, what now?"
+    },
+    "retry": {
+      "fr": "C'est n'importe quoi ce niveau. Relance !",
+      "en": "This level is chaos. Retry!"
+    }
   },
   "init": {
     "player": {

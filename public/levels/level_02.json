@@ -12,11 +12,26 @@
     "girlsHit": 10
   },
   "texts": {
-    "objective": "Choisis tes cibles !",
-    "win": "Sniper attitude, bravo !",
-    "lose": "Ouvre les yeux, les gars c'est les trucs en bleu !",
-    "nextLevel": "Allez, on enchaine !",
-    "retry": "OK, je vais viser mieux"
+    "objective": {
+      "fr": "Choisis tes cibles !",
+      "en": "Choose your targets!"
+    },
+    "win": {
+      "fr": "Sniper attitude, bravo !",
+      "en": "Sniper attitude, nice job!"
+    },
+    "lose": {
+      "fr": "Ouvre les yeux, les gars c'est les trucs en bleu !",
+      "en": "Open your eyes, guys are the blue ones!"
+    },
+    "nextLevel": {
+      "fr": "Allez, on enchaine !",
+      "en": "Come on, keep it going!"
+    },
+    "retry": {
+      "fr": "OK, je vais viser mieux",
+      "en": "OK, I'll aim better"
+    }
   },
   "init": {
     "player": {

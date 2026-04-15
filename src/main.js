@@ -42,10 +42,12 @@ class CyberStreet {
    * @param {HTMLElement} appElement
    * @param {DevTuningManager} tuningManager
    * @param {object[]} levels
+   * @param {"fr" | "en"} language
    */
-  constructor(appElement, tuningManager, levels = []) {
+  constructor(appElement, tuningManager, levels = [], language = "en") {
     this.appElement = appElement
     this.tuningManager = tuningManager
+    this.language = language
     this.devPalette = null
     this.rendererApp = new RendererApp(appElement)
     this.player = new PlayerController(this.rendererApp.scene, this.rendererApp.getDomElement(), this.rendererApp.camera)
@@ -107,10 +109,10 @@ class CyberStreet {
     this._renderDistance(this.player.mesh.position)
     this._renderChronoHud()
     this._bindLevelOverlayEvents()
+    this.audioSystem.attachUnlockListeners(window)
     this._startDemoMode()
     this._bindInteractionHandlers()
     this._bindInteractionEvents()
-    this.audioSystem.attachUnlockListeners(window)
     this._loop = this._loop.bind(this)
     this._loop()
   }
@@ -325,7 +327,18 @@ class CyberStreet {
    * @returns {string}
    */
   _getLevelText(levelDefinition, textKey) {
-    return String(levelDefinition?.texts?.[textKey] ?? "").trim()
+    const localizedText = levelDefinition?.texts?.[textKey]
+    if (typeof localizedText === "string") {
+      return localizedText.trim()
+    }
+
+    if (!localizedText || typeof localizedText !== "object") {
+      return ""
+    }
+
+    const preferredText = this.language === "fr" ? localizedText.fr : localizedText.en
+    const fallbackText = this.language === "fr" ? localizedText.en : localizedText.fr
+    return String(preferredText || fallbackText || "").trim()
   }
 
   /**
@@ -1093,12 +1106,12 @@ class CyberStreet {
    */
   _onPointerDown(event) {
     if (this.gameState === "demo") {
-      this.audioSystem.notifyUserGesture()
+      this.audioSystem.notifyUserGesture(event)
       this._startGameplay()
       return
     }
 
-    this.audioSystem.notifyUserGesture()
+    this.audioSystem.notifyUserGesture(event)
     if (event.button !== 0) {
       return
     }
@@ -1159,12 +1172,12 @@ class CyberStreet {
    */
   _onCanvasClick(event) {
     if (this.gameState === "demo") {
-      this.audioSystem.notifyUserGesture()
+      this.audioSystem.notifyUserGesture(event)
       this._startGameplay()
       return
     }
 
-    this.audioSystem.notifyUserGesture()
+    this.audioSystem.notifyUserGesture(event)
     const now = performance.now()
     if (now - this.pointerInteractionState.lastInteractionTs < 120) {
       return
@@ -1175,10 +1188,11 @@ class CyberStreet {
 
   /**
    * Capture touch gestures on canvas to unlock mobile audio reliably.
+   * @param {TouchEvent} event
    * @returns {void}
    */
-  _onCanvasTouchStart() {
-    this.audioSystem.notifyUserGesture()
+  _onCanvasTouchStart(event) {
+    this.audioSystem.notifyUserGesture(event)
   }
 
   /**
@@ -1490,14 +1504,14 @@ const tuningManager = new DevTuningManager()
 tuningManager.applyRuntime()
 
 async function _bootstrapGame() {
-  const gameInstance = new CyberStreet(appElement, tuningManager, [normalizeLevelDefinition({}, 1)])
+  const language = _resolveGameLanguage()
+  const gameInstance = new CyberStreet(appElement, tuningManager, [normalizeLevelDefinition({}, 1)], language)
   _setBootLoadingHudVisibility(false)
-  const levelLoadStartTimestampMs = performance.now()
   loadGameLevels()
     .then((loadedLevels) => {
-      const loadDurationMs = Math.round(performance.now() - levelLoadStartTimestampMs)
       gameInstance.replaceLevels(loadedLevels)
-      console.info(`Loaded ${loadedLevels.length} level files in ${loadDurationMs} ms`)
+      gameInstance.devPalette?.refreshLevelDefinition(gameInstance.getCurrentLevelDefinitionClone())
+      _logBootBanner()
     })
     .catch((error) => {
       console.warn("Failed to load level files, fallback level kept", error)
@@ -1543,4 +1557,37 @@ function _setBootLoadingHudVisibility(isBootLoading) {
   if (scoreHudElement) {
     scoreHudElement.classList.toggle("boot-loading-hidden", isBootLoading)
   }
+}
+
+/**
+ * Print one startup ASCII banner.
+ * @returns {void}
+ */
+function _logBootBanner() {
+  const bannerLines = [
+    " CCC   Y   Y  BBBB   EEEEE  RRRR    SSSS  TTTTT  RRRR   EEEEE  EEEEE  TTTTT",
+    "C   C   Y Y   B   B  E      R   R  S        T    R   R  E      E        T  ",
+    "C        Y    BBBB   EEE    RRRR    SSS     T    RRRR   EEE    EEE      T  ",
+    "C   C    Y    B   B  E      R R        S    T    R R    E      E        T  ",
+    " CCC     Y    BBBB   EEEEE  R  RR  SSSS     T    R  RR  EEEEE  EEEEE    T  ",
+    "",
+    "Anti-Woke Carnage"
+  ]
+  console.info(bannerLines.join("\n"))
+}
+
+/**
+ * Resolve runtime language from browser settings.
+ * @returns {"fr" | "en"}
+ */
+function _resolveGameLanguage() {
+  const preferredLanguage = String(
+    navigator?.languages?.[0] ??
+    navigator?.language ??
+    navigator?.userLanguage ??
+    "en"
+  )
+    .trim()
+    .toLowerCase()
+  return preferredLanguage.startsWith("fr") ? "fr" : "en"
 }

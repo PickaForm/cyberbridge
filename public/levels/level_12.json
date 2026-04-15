@@ -12,11 +12,26 @@
     "girlsHit": 1
   },
   "texts": {
-    "objective": "Pareil ! Ne bouscule personne !",
-    "win": "Well done, you're a true master of the art of not hitting anyone !",
-    "lose": "Haha, avec plus de monde tu fais moins le malin hein ?",
-    "nextLevel": "C'était, relance tout !",
-    "retry": "Ca demande du doigté, essayons encore..."
+    "objective": {
+      "fr": "Pareil ! Ne bouscule personne !",
+      "en": "Same thing! Don't bump into anyone!"
+    },
+    "win": {
+      "fr": "Bravo, tu es un vrai maître dans l'art de ne toucher personne !",
+      "en": "Well done, you're a true master of the art of not hitting anyone!"
+    },
+    "lose": {
+      "fr": "Haha, avec plus de monde tu fais moins le malin hein ?",
+      "en": "Haha, with more people around you're less cocky, right?"
+    },
+    "nextLevel": {
+      "fr": "C'était, relance tout !",
+      "en": "That was it, restart everything!"
+    },
+    "retry": {
+      "fr": "Ca demande du doigté, essayons encore...",
+      "en": "It takes finesse, let's try again..."
+    }
   },
   "init": {
     "player": {
