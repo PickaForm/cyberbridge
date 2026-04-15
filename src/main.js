@@ -209,6 +209,22 @@ class CyberStreet {
   }
 
   /**
+   * Replace active level catalog with freshly loaded definitions.
+   * @param {object[]} levels
+   * @returns {void}
+   */
+  replaceLevels(levels) {
+    const currentLevelId = Number(this._getCurrentLevelDefinition()?.id) || 1
+    this.levels = this._resolveLevels(levels)
+    const matchingLevelIndex = this.levels.findIndex((levelDefinition) => Number(levelDefinition?.id) === currentLevelId)
+    if (matchingLevelIndex >= 0) {
+      this.currentLevelIndex = matchingLevelIndex
+    } else {
+      this.currentLevelIndex = Math.max(0, Math.min(this.currentLevelIndex, this.levels.length - 1))
+    }
+  }
+
+  /**
    * Bind overlay input events used by level intro and results.
    * @returns {void}
    */
@@ -1461,19 +1477,32 @@ if (!appElement) {
 }
 
 const hudElement = document.getElementById("hud")
+const scoreHudElement = document.getElementById("scoreHud")
 const hudCloseButton = document.getElementById("hudCloseBtn")
 if (hudElement && hudCloseButton) {
   hudCloseButton.addEventListener("click", () => {
     hudElement.style.display = "none"
   })
 }
+_setBootLoadingHudVisibility(true)
 
 const tuningManager = new DevTuningManager()
 tuningManager.applyRuntime()
 
 async function _bootstrapGame() {
-  const loadedLevels = await loadGameLevels()
-  const gameInstance = new CyberStreet(appElement, tuningManager, loadedLevels)
+  const gameInstance = new CyberStreet(appElement, tuningManager, [normalizeLevelDefinition({}, 1)])
+  _setBootLoadingHudVisibility(false)
+  const levelLoadStartTimestampMs = performance.now()
+  loadGameLevels()
+    .then((loadedLevels) => {
+      const loadDurationMs = Math.round(performance.now() - levelLoadStartTimestampMs)
+      gameInstance.replaceLevels(loadedLevels)
+      console.info(`Loaded ${loadedLevels.length} level files in ${loadDurationMs} ms`)
+    })
+    .catch((error) => {
+      console.warn("Failed to load level files, fallback level kept", error)
+    })
+
   const isDevModeEnabled = _resolveDevMode()
   if (isDevModeEnabled) {
     const devPalette = new DevPalette(tuningManager, {
@@ -1500,3 +1529,18 @@ async function _bootstrapGame() {
 _bootstrapGame().catch((error) => {
   console.error("Failed to bootstrap game", error)
 })
+
+/**
+ * Toggle HUD widgets visibility during initial boot loading state.
+ * @param {boolean} isBootLoading
+ * @returns {void}
+ */
+function _setBootLoadingHudVisibility(isBootLoading) {
+  if (hudElement) {
+    hudElement.classList.toggle("boot-loading-hidden", isBootLoading)
+  }
+
+  if (scoreHudElement) {
+    scoreHudElement.classList.toggle("boot-loading-hidden", isBootLoading)
+  }
+}

@@ -39,6 +39,10 @@ canvas {
   margin: 2px 0;
 }
 
+.boot-loading-hidden {
+  display: none !important;
+}
+
 #hudTopRightHint {
   position: absolute;
   top: 6px;
