@@ -78,6 +78,8 @@ class CyberStreet {
     this.levelElapsedMs = 0
     this.levels = this._resolveLevels(levels)
     this.currentLevelIndex = 0
+    this.hasLoadedLevels = Array.isArray(levels) && levels.length > 0
+    this.isLevelStartPending = false
     this.gameState = "demo"
     this.pendingResult = null
     this.demoLevelSwitchElapsedSeconds = 0
@@ -211,7 +213,7 @@ class CyberStreet {
   }
 
   /**
-   * Replace active level catalog with freshly loaded definitions.
+   * Replace active level catalog and resume any start requested during loading.
    * @param {object[]} levels
    * @returns {void}
    */
@@ -223,6 +225,11 @@ class CyberStreet {
       this.currentLevelIndex = matchingLevelIndex
     } else {
       this.currentLevelIndex = Math.max(0, Math.min(this.currentLevelIndex, this.levels.length - 1))
+    }
+
+    this.hasLoadedLevels = true
+    if (this.isLevelStartPending) {
+      this._startCurrentLevel()
     }
   }
 
@@ -258,6 +265,12 @@ class CyberStreet {
    * @returns {void}
    */
   _startCurrentLevel() {
+    if (!this.hasLoadedLevels) {
+      this.isLevelStartPending = true
+      return
+    }
+
+    this.isLevelStartPending = false
     this._setInsertCoinVisibility(false)
     this._setDemoHudVisibility(false)
     const levelDefinition = this._getCurrentLevelDefinition()
@@ -465,7 +478,6 @@ class CyberStreet {
       return
     }
 
-    this._setInsertCoinVisibility(false)
     this.currentLevelIndex = 0
     this._startCurrentLevel()
   }
@@ -1503,9 +1515,13 @@ _setBootLoadingHudVisibility(true)
 const tuningManager = new DevTuningManager()
 tuningManager.applyRuntime()
 
+/**
+ * Start the demo immediately and load playable level definitions in the background.
+ * @returns {Promise<void>}
+ */
 async function _bootstrapGame() {
   const language = _resolveGameLanguage()
-  const gameInstance = new CyberStreet(appElement, tuningManager, [normalizeLevelDefinition({}, 1)], language)
+  const gameInstance = new CyberStreet(appElement, tuningManager, [], language)
   _setBootLoadingHudVisibility(false)
   loadGameLevels()
     .then((loadedLevels) => {
@@ -1515,6 +1531,7 @@ async function _bootstrapGame() {
     })
     .catch((error) => {
       console.warn("Failed to load level files, fallback level kept", error)
+      gameInstance.replaceLevels([normalizeLevelDefinition({}, 1)])
     })
 
   const isDevModeEnabled = _resolveDevMode()
